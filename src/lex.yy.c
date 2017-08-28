@@ -875,7 +875,7 @@ case 9:
 YY_RULE_SETUP
 #line 39 "scanner.l"
 {
-	printf("Token type: print statement, Lexeme/Token Value: %s\n", yytext);  
+	printf("Token type: print statement, Lexeme/Token Value: %s\n", yytext);
 	return PRINT;
 }
 	YY_BREAK

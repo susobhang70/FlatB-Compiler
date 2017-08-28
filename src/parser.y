@@ -84,7 +84,7 @@ number:			'-' NUMBER
 
 assignment:		identifier '=' mathexp
 
-cond_statement: mathexp cond_op mathexp
+cond_statement:	mathexp cond_op mathexp
 
 cond_op:		GEQ
 				|LEQ
@@ -121,13 +121,13 @@ forloop:		FORLOOP forloopdetails '{' statements '}'
 				| FORLOOP forloopdetails term
 				;
 
-forloopdetails: assignment ',' mathexp ',' mathexp
+forloopdetails:	assignment ',' mathexp ',' mathexp
 				| assignment ',' mathexp
 				;
 
 whileloop:		WHILELOOP cond_statement '{' statements '}'
 
-ifelse:			IF cond_statement '{' statements '}' ELSE cond_statement '{' statements '}'
+ifelse:			IF cond_statement '{' statements '}' ELSE '{' statements '}'
 				| IF cond_statement '{' statements '}'
 				;
 

@@ -21,6 +21,10 @@ codeblock{
  		nope = 20;
  	}
 
+ 	else {
+ 		test = 20;
+ 	}
+
 	print "Sum value: ", sum, yum, dimsum ;
 	read sum[2];
 	read sum[c];
