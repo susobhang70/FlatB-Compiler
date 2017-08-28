@@ -37,7 +37,7 @@
 	return READ;
 }
 "print" {
-	printf("Token type: print statement, Lexeme/Token Value: %s\n", yytext);  
+	printf("Token type: print statement, Lexeme/Token Value: %s\n", yytext);
 	return PRINT;
 }
 "println" {

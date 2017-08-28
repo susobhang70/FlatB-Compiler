@@ -141,7 +141,7 @@ iostatement:	print STRINGID ',' midentifiers
 
 void yyerror (char const *s)
 {
-       fprintf (stderr, "%s\n", s);
+	   fprintf (stderr, "%s\n", s);
 }
 
 int main(int argc, char *argv[])
