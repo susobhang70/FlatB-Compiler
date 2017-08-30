@@ -82,9 +82,13 @@ number:			'-' NUMBER
 				| NUMBER
 				;
 
-assignment:		identifier '=' mathexp
+assignment:		identifier '=' assignment
+				| identifier '=' mathexp
+				;
 
-cond_statement:	mathexp cond_op mathexp
+cond_statement:	mathexp cond_op cond_statement
+				| mathexp cond_op mathexp
+				;
 
 cond_op:		GEQ
 				|LEQ
@@ -132,6 +136,7 @@ ifelse:			IF cond_statement '{' statements '}' ELSE '{' statements '}'
 				;
 
 iostatement:	print STRINGID ',' midentifiers
+				| print STRINGID
 				| print midentifiers
 				| READ identifier
 				;
