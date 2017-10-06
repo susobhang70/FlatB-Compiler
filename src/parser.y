@@ -1,14 +1,24 @@
 %{
+  #include "ASTDefinition.h"
   #include <stdio.h>
   #include <stdlib.h>
-  FILE *yyin;
+  
+  #define YYDEBUG 1
+
   int yylex (void);
   void yyerror (char const *s);
 %}
 
+%type <program> program
+%type <variable> identifierdecl identifier
+%type <variableSet> midentifiers
+%type <decl_line> decl_line
+%type <decl_block> declaration
+%type <code_statements> statements
+
 %token DECLBLOCK
 %token CODEBLOCK
-%token NUMBER
+%token <number> NUMBER
 %token FORLOOP
 %token WHILELOOP
 %token IF
@@ -17,15 +27,14 @@
 %token PRINTLN
 %token READ
 %token GOTO
-%token IDENTIFIER
-%token TYPE
-%token NEWLINE
+%token <string> TYPE IDENTIFIER NEWLINE
 %token ETOK
 %token EQTO
 %token LEQ
 %token GEQ
 %token NEQ
 %token STRINGID
+
 %left '+'
 %left '-'
 %left '*'
@@ -34,38 +43,88 @@
 
 %%
 
-program:		decl_block code_block					/* the program */
-
-decl_block:  	DECLBLOCK '{' declaration '}'
-				| DECLBLOCK '{' '}'						/* the declaration block */
+program:		DECLBLOCK '{' declaration '}' CODEBLOCK '{' statements '}'
+				{
+					$$ = new ASTProgram($3, $7);
+				}
+				| DECLBLOCK '{' '}'	CODEBLOCK '{' statements '}'
+				{
+					$$ = new ASTProgram(NULL, $6);
+				}
+				|DECLBLOCK '{' declaration '}' CODEBLOCK '{' '}'
+				{
+					$$ = new ASTProgram($3, NULL);
+				}
+				|DECLBLOCK '{' '}' CODEBLOCK '{' '}'
+				{
+					$$ = new ASTProgram(NULL, NULL);
+				}
 				;
 
-code_block:  	CODEBLOCK '{' statements '}'			/* the code block */
-				| CODEBLOCK '{' '}'
+declaration:   	decl_line
+				{
+					$$ = new ASTDeclBlock();
+					$$->addStatement($1);
+				}
+				| decl_line declaration
+				{
+					$$->addStatement($1);
+				}
 				;
 
-declaration:   	decl_line declaration					/* declaration block RE */
-				| decl_line
-				;
+decl_line: 		TYPE midentifiers NEWLINE				/* decl line RE */
+				{
+					$$ = new ASTDeclStatement(string($1), $2);
+				}
+				| error NEWLINE
+				{
+					yyerrok;
+				}
 
-decl_line: 		numtype midentifiers term				/* decl line RE */
-
-midentifiers:	identifierdecl ',' midentifiers			/* multiple identifiers RE for commas */
-				| identifier
+midentifiers:	identifierdecl
+				{
+					$$ = new ASTVariableSet();
+					$$->addVariable($1);
+				}
+				| midentifiers ',' identifierdecl
+				{
+					$$->addVariable($3);
+				}
 				;
 
 statements:		gotolabel statement_line statements		/* codeblock statements */
+				{
+					$$ = new ASTCodeBlock();
+				}
 				| gotolabel statement_line
+				{
+					$$ = new ASTCodeBlock();
+				}
 				| statement_line statements
+				{
+					$$ = new ASTCodeBlock();
+				}
 				| statement_line
+				{
+					$$ = new ASTCodeBlock();
+				}
 				;
 
 identifier:		IDENTIFIER '[' IDENTIFIER ']'
+				{
+					$$ = new ASTVariable(string($1), true, 0);
+				}
 				| identifierdecl
 				;
 
 identifierdecl:	IDENTIFIER '[' NUMBER ']'				/* identifier declaration */
+				{
+					$$ = new ASTVariable(string($1), true, $3);
+				}
 				| IDENTIFIER
+				{
+					$$ = new ASTVariable(string($1), false);
+				}
 				;
 
 mathexp:		mathexp '+' mathexp
@@ -106,23 +165,19 @@ print:			PRINT
 				| PRINTLN
 				;
 
-term:			NEWLINE
-
-statement_line:	assignment term
+statement_line:	assignment NEWLINE
 				| forloop
 				| whileloop
 				| ifelse
-				| iostatement term
-				| gotoblock term
-				| term
+				| iostatement NEWLINE
+				| gotoblock NEWLINE
+				| NEWLINE
 				;
-
-numtype:		TYPE
 
 gotolabel:		IDENTIFIER ':'
 
 forloop:		FORLOOP forloopdetails '{' statements '}'
-				| FORLOOP forloopdetails term
+				| FORLOOP forloopdetails NEWLINE
 				;
 
 forloopdetails:	assignment ',' mathexp ',' mathexp
@@ -151,6 +206,7 @@ void yyerror (char const *s)
 
 int main(int argc, char *argv[])
 {
+	extern FILE *yyin;
 	if (argc == 1 ) {
 		fprintf(stderr, "Correct usage: bcc filename\n");
 		exit(1);
@@ -160,7 +216,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Passing more arguments than necessary.\n");
 		fprintf(stderr, "Correct usage: bcc filename\n");
 	}
-
 	yyin = fopen(argv[1], "r");
 
 	yyparse();

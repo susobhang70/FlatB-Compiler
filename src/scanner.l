@@ -1,5 +1,9 @@
 %{
-#include "parser.tab.h"
+	#include "ASTDefinition.h"
+	#include "parser.tab.h"
+	#include <cstdlib>
+
+	extern union NODE yylval;
 %}
 
 %%
@@ -13,7 +17,8 @@
 	return CODEBLOCK;
 }
 "int" {
-	printf("Token type: Var Type, Lexeme/Token Value: %s\n", yytext);  
+	printf("Token type: Var Type, Lexeme/Token Value: %s\n", yytext);
+	yylval.string = strdup(yytext);
 	return TYPE;
 }
 "for" {
@@ -21,7 +26,7 @@
 	return FORLOOP;
 }
 "while" {
-	printf("Token type: Whileloop, Lexeme/Token Value: %s\n", yytext);  
+	printf("Token type: Whileloop, Lexeme/Token Value: %s\n", yytext);
 	return WHILELOOP;
 }
 "if" {
@@ -49,16 +54,19 @@
 	return GOTO;
 }
 [0-9][0-9]*	{  
-	printf("Token type: Number, Lexeme/Token Value: %s\n", yytext);  
+	printf("Token type: Number, Lexeme/Token Value: %s\n", yytext);
+	yylval.number = atoi(yytext);
 	return NUMBER; 
 }
 [a-zA-Z_]?\"(\\.|[^\\"])*\" {
-	printf("Token type: String, Lexeme/Token Value: %s\n", yytext);  
+	printf("Token type: String, Lexeme/Token Value: %s\n", yytext);
+	yylval.string = strdup(yytext);
 	return STRINGID;
 }
 [a-zA-Z][a-zA-Z0-9]* {  
-	printf("Token type: Identifier, Lexeme/Token Value: %s\n", yytext);  
-	return IDENTIFIER; 
+	printf("Token type: Identifier, Lexeme/Token Value: %s\n", yytext);
+	yylval.string = strdup(yytext);
+	return IDENTIFIER;
 } 
 "["		return '[';
 "]"		return ']';
