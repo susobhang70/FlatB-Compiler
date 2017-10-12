@@ -9,7 +9,7 @@
 %%
 
 "declblock" {
-	printf("Token type: Declaration Block, Lexeme/Token Value: %s\n", yytext);  
+	printf("Token type: Declaration Block, Lexeme/Token Value: %s\n", yytext);
 	return DECLBLOCK;
 }
 "codeblock" {

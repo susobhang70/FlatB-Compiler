@@ -815,7 +815,7 @@ case 1:
 YY_RULE_SETUP
 #line 11 "scanner.l"
 {
-	printf("Token type: Declaration Block, Lexeme/Token Value: %s\n", yytext);  
+	printf("Token type: Declaration Block, Lexeme/Token Value: %s\n", yytext);
 	return DECLBLOCK;
 }
 	YY_BREAK

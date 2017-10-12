@@ -7,10 +7,11 @@
 
   int yylex (void);
   void yyerror (char const *s);
+  ASTProgram *start = NULL;
 %}
 
 %type <program> program
-%type <variable> identifierdecl identifier
+%type <variable> identifierdecl
 %type <variableSet> midentifiers
 %type <decl_line> decl_line
 %type <decl_block> declaration
@@ -46,6 +47,7 @@
 program:		DECLBLOCK '{' declaration '}' CODEBLOCK '{' statements '}'
 				{
 					$$ = new ASTProgram($3, $7);
+					start = $$;
 				}
 				| DECLBLOCK '{' '}'	CODEBLOCK '{' statements '}'
 				{
@@ -61,14 +63,14 @@ program:		DECLBLOCK '{' declaration '}' CODEBLOCK '{' statements '}'
 				}
 				;
 
-declaration:   	decl_line
+declaration:	decl_line
 				{
 					$$ = new ASTDeclBlock();
 					$$->addStatement($1);
 				}
-				| decl_line declaration
+				| declaration decl_line 
 				{
-					$$->addStatement($1);
+					$$->addStatement($2);
 				}
 				;
 
@@ -110,10 +112,7 @@ statements:		gotolabel statement_line statements		/* codeblock statements */
 				}
 				;
 
-identifier:		IDENTIFIER '[' IDENTIFIER ']'
-				{
-					$$ = new ASTVariable(string($1), true, 0);
-				}
+identifier:		IDENTIFIER '[' IDENTIFIER ']'			/* Note to self: make this mathexp instead of IDENTIFIER */
 				| identifierdecl
 				;
 
@@ -219,4 +218,10 @@ int main(int argc, char *argv[])
 	yyin = fopen(argv[1], "r");
 
 	yyparse();
+
+	if(start)
+	{
+		ASTVisitor v;
+		v.visit(start);
+	}
 }

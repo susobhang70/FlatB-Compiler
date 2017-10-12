@@ -1,6 +1,73 @@
 #include "ASTDefinition.h"
+#include <iostream>
+#include <fstream>
 
 using namespace std;
+
+ofstream xml("AST_XML.xml");
+int tabs = 0;
+
+void insertTabs()
+{
+	for(int i = 0; i < tabs; i++)
+		xml << "\t";
+}
+
+/*************************** ASTVisitor ****************************************/
+ASTVisitor::ASTVisitor()
+{
+	return;
+}
+
+void ASTVisitor::visit(ASTCodeBlock *code_statements)
+{
+	return;
+}
+
+void ASTVisitor::visit(ASTVariable *variable)
+{
+	insertTabs();
+	xml << "<variable name=\'" << variable->var_name << "\' ";
+	if(variable->array_type)
+		xml << "size=\'" << variable->length << "\' ";
+	xml << "type=\'" << variable->data_type << "\' />" << endl;
+}
+
+void ASTVisitor::visit(ASTVariableSet *variableSet)
+{
+	for(auto variable: variableSet->variables)
+		variable->accept(this);
+}
+
+void ASTVisitor::visit(ASTDeclStatement *decl_line)
+{
+	for(auto variable: decl_line->variables)
+		variable->accept(this);
+}
+
+void ASTVisitor::visit(ASTDeclBlock *decl_block)
+{
+	insertTabs();
+	xml << "<declarations count=\'" << decl_block->statements.size() << "\'>" << endl;
+	tabs++;
+	for(auto statement: decl_block->statements)
+		statement->accept(this);
+	tabs--;
+	xml << "</declarations>" << endl;
+}
+
+void ASTVisitor::visit(ASTProgram *program)
+{
+	xml << "<?xml version=\'1.0\' encoding=\'UTF-8\'?>" << endl;
+	xml << "<program language=\'Flat-B\'>" << endl;
+	tabs++;
+	program->decl_block->accept(this);
+	program->code_block->accept(this);
+	tabs--;
+	xml << "</program>" << endl;
+}
+
+/************************** End ASTVisitor *************************************/
 
 /*************************** ASTCodeBlock **************************************/
 ASTCodeBlock::ASTCodeBlock()
@@ -16,7 +83,7 @@ void ASTCodeBlock::accept(Visitor *v)
 /************************** End ASTCodeBlock ***********************************/
 
 /*************************** ASTVariable **************************************/
-ASTVariable::ASTVariable(string var_name, bool array_type, int length)
+ASTVariable::ASTVariable(string var_name, bool array_type, unsigned int length)
 {
 	this->var_name = var_name;
 	this->array_type = array_type;

@@ -62,6 +62,7 @@ class ASTNode
 
 class ASTCodeBlock: public ASTNode
 {
+	friend class ASTVisitor;
 	public:
 		ASTCodeBlock();
 		void accept(Visitor *);
@@ -69,6 +70,7 @@ class ASTCodeBlock: public ASTNode
 
 class ASTVariable: public ASTNode
 {
+	friend class ASTVisitor;
 	private:
 		string var_name;
 		string data_type;
@@ -76,7 +78,7 @@ class ASTVariable: public ASTNode
 		unsigned int length;
 
 	public:
-		ASTVariable(string, bool, int);
+		ASTVariable(string, bool, unsigned int);
 		ASTVariable(string, bool);
 		void setDataType(string);
 		void accept(Visitor *);
@@ -84,6 +86,7 @@ class ASTVariable: public ASTNode
 
 class ASTVariableSet: public ASTNode
 {
+	friend class ASTVisitor;
 	private:
 		vector<ASTVariable *> variables;
 
@@ -95,6 +98,7 @@ class ASTVariableSet: public ASTNode
 
 class ASTDeclStatement: public ASTNode
 {
+	friend class ASTVisitor;
 	private:
 		vector<ASTVariable *> variables;
 
@@ -105,6 +109,7 @@ class ASTDeclStatement: public ASTNode
 
 class ASTDeclBlock: public ASTNode
 {
+	friend class ASTVisitor;
 	private:
 		vector<ASTDeclStatement *> statements;
 
@@ -116,6 +121,7 @@ class ASTDeclBlock: public ASTNode
 
 class ASTProgram: public ASTNode
 {
+	friend class ASTVisitor;
 	private:
 		ASTDeclBlock *decl_block;
 		ASTCodeBlock *code_block;
