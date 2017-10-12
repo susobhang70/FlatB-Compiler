@@ -31,17 +31,40 @@ union NODE
 typedef union NODE YYSTYPE;
 #define YYSTYPE_IS_DECLARED 1
 
+class Visitor
+{
+	public:
+		virtual void visit(ASTCodeBlock *) = 0;
+		virtual void visit(ASTVariable *) = 0;
+		virtual void visit(ASTVariableSet *) = 0;
+		virtual void visit(ASTDeclStatement *) = 0;
+		virtual void visit(ASTDeclBlock *) = 0;
+		virtual void visit(ASTProgram *) = 0;
+};
+
+class ASTVisitor: public Visitor
+{
+	public:
+		ASTVisitor();
+		void visit(ASTCodeBlock *);
+		void visit(ASTVariable *);
+		void visit(ASTVariableSet *);
+		void visit(ASTDeclStatement *);
+		void visit(ASTDeclBlock *);
+		void visit(ASTProgram *);
+};
+
 class ASTNode
 {
 	public:
-		virtual void visit() = 0;
+		virtual void accept(Visitor *) = 0;
 };
 
 class ASTCodeBlock: public ASTNode
 {
 	public:
 		ASTCodeBlock();
-		void visit();
+		void accept(Visitor *);
 };
 
 class ASTVariable: public ASTNode
@@ -56,7 +79,7 @@ class ASTVariable: public ASTNode
 		ASTVariable(string, bool, int);
 		ASTVariable(string, bool);
 		void setDataType(string);
-		void visit();
+		void accept(Visitor *);
 };
 
 class ASTVariableSet: public ASTNode
@@ -67,7 +90,7 @@ class ASTVariableSet: public ASTNode
 	public:
 		void addVariable(ASTVariable *);
 		vector<ASTVariable *> getVariables();
-		void visit();
+		void accept(Visitor *);
 };
 
 class ASTDeclStatement: public ASTNode
@@ -77,7 +100,7 @@ class ASTDeclStatement: public ASTNode
 
 	public:
 		ASTDeclStatement(string, ASTVariableSet *);
-		void visit();
+		void accept(Visitor *);
 };
 
 class ASTDeclBlock: public ASTNode
@@ -88,7 +111,7 @@ class ASTDeclBlock: public ASTNode
 	public:
 		ASTDeclBlock();
 		void addStatement(ASTDeclStatement *);
-		void visit();
+		void accept(Visitor *);
 };
 
 class ASTProgram: public ASTNode
@@ -99,5 +122,5 @@ class ASTProgram: public ASTNode
 
 	public:
 		ASTProgram(ASTDeclBlock *, ASTCodeBlock *);
-		void visit();
+		void accept(Visitor *);
 };

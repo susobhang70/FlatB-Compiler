@@ -8,9 +8,9 @@ ASTCodeBlock::ASTCodeBlock()
 	return;
 }
 
-void ASTCodeBlock::visit()
+void ASTCodeBlock::accept(Visitor *v)
 {
-	return;
+	v->visit(this);
 }
 
 /************************** End ASTCodeBlock ***********************************/
@@ -34,9 +34,9 @@ void ASTVariable::setDataType(string data_type)
 	this->data_type = data_type;
 }
 
-void ASTVariable::visit()
+void ASTVariable::accept(Visitor *v)
 {
-	return;
+	v->visit(this);
 }
 
 /************************** End ASTVariable ***********************************/
@@ -53,9 +53,9 @@ vector<ASTVariable *> ASTVariableSet::getVariables()
 	return variables;
 }
 
-void ASTVariableSet::visit()
+void ASTVariableSet::accept(Visitor *v)
 {
-	return;
+	v->visit(this);
 }
 
 /************************** End ASTVariableSet ********************************/
@@ -68,9 +68,9 @@ ASTDeclStatement::ASTDeclStatement(string data_type, ASTVariableSet *variableSet
 		variables[i]->setDataType(data_type);
 }
 
-void ASTDeclStatement::visit()
+void ASTDeclStatement::accept(Visitor *v)
 {
-	return;
+	v->visit(this);
 }
 
 /************************** End ASTDeclStatement ******************************/
@@ -86,9 +86,9 @@ void ASTDeclBlock::addStatement(ASTDeclStatement *statement)
 	statements.push_back(statement);
 }
 
-void ASTDeclBlock::visit()
+void ASTDeclBlock::accept(Visitor *v)
 {
-	return;
+	v->visit(this);
 }
 
 /************************** End ASTDeclBlock **********************************/
@@ -101,9 +101,9 @@ ASTProgram::ASTProgram(ASTDeclBlock *decl_block, ASTCodeBlock *code_block)
 	this->code_block = code_block;
 }
 
-void ASTProgram::visit()
+void ASTProgram::accept(Visitor *v)
 {
-	return;
+	v->visit(this);
 }
 
 /***************************End ASTProgram ************************************/
