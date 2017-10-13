@@ -76,7 +76,6 @@
 "/"		return '/';
 "+"		return '+';
 "-"		return '-';
-"^"		return '^';
 "=="	return EQTO;
 "!="	return NEQ;
 ">="	return GEQ;

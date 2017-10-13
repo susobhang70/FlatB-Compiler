@@ -4,11 +4,14 @@
 
 using namespace std;
 
+// enum statement_type {Assignment, Conditional, forloop, whileloop, ifstmt, ifelse};
+
 union NODE
 {
 	int number;
 	char *string;
-	class ASTCodeBlock *code_statements;
+	class ASTCodeStatement *code_statement;
+	class ASTCodeBlock *code_block;
 	class ASTVariable *variable;
 	class ASTVariableSet *variableSet;
 	class ASTDeclStatement *decl_line;
@@ -24,6 +27,7 @@ union NODE
 		decl_block = NULL;
 		program = NULL;
 	}
+
 	~NODE()
 	{}
 };
@@ -34,6 +38,7 @@ typedef union NODE YYSTYPE;
 class Visitor
 {
 	public:
+		virtual void visit(ASTCodeStatement *) = 0;
 		virtual void visit(ASTCodeBlock *) = 0;
 		virtual void visit(ASTVariable *) = 0;
 		virtual void visit(ASTVariableSet *) = 0;
@@ -46,6 +51,7 @@ class ASTVisitor: public Visitor
 {
 	public:
 		ASTVisitor();
+		void visit(ASTCodeStatement *);
 		void visit(ASTCodeBlock *);
 		void visit(ASTVariable *);
 		void visit(ASTVariableSet *);
@@ -60,14 +66,32 @@ class ASTNode
 		virtual void accept(Visitor *) = 0;
 };
 
-class ASTCodeStatement: public ASTNode
+class ASTTargetVar: public ASTNode
+{
+	public:
+		void accept(Visitor *);
+};
+
+class ASTAssignment: public ASTNode
 {
 	friend class ASTVisitor;
 	private:
-		something;
+		ASTTargetVar *target;
+		ASTNode *rexpr;
 
 	public:
-		ASTCodeStatement();
+		ASTAssignment(ASTTargetVar *, ASTNode *);
+		void accept(Visitor *);
+}
+
+class ASTCodeStatement: public ASTNode
+{
+	friend class ASTVisitor;
+	protected:
+		ASTNode *stmtptr;
+
+	public:
+		ASTCodeStatement(ASTNode *);
 		void accept(Visitor *);
 };
 

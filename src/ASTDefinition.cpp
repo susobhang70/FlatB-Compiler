@@ -19,9 +19,21 @@ ASTVisitor::ASTVisitor()
 	return;
 }
 
-void ASTVisitor::visit(ASTCodeBlock *code_statements)
+void ASTVisitor::visit(ASTCodeStatement *code_statement)
 {
 	return;
+}
+
+void ASTVisitor::visit(ASTCodeBlock *code_block)
+{
+	insertTabs();
+	xml << "<code>" << endl;
+	tabs++;
+	for(auto statement: code_block->statements)
+		statement->accept(this);
+	tabs--;
+	insertTabs();
+	xml << "</code>" << endl;
 }
 
 void ASTVisitor::visit(ASTVariable *variable)
@@ -48,11 +60,12 @@ void ASTVisitor::visit(ASTDeclStatement *decl_line)
 void ASTVisitor::visit(ASTDeclBlock *decl_block)
 {
 	insertTabs();
-	xml << "<declarations count=\'" << decl_block->statements.size() << "\'>" << endl;
+	xml << "<declarations>" << endl;
 	tabs++;
 	for(auto statement: decl_block->statements)
 		statement->accept(this);
 	tabs--;
+	insertTabs();
 	xml << "</declarations>" << endl;
 }
 
@@ -71,10 +84,28 @@ void ASTVisitor::visit(ASTProgram *program)
 
 /************************** End ASTVisitor *************************************/
 
+/*************************** ASTCodeStatement **********************************/
+ASTCodeStatement::ASTCodeStatement()
+{
+	return;
+}
+
+void ASTCodeStatement::accept(Visitor *v)
+{
+	v->visit(this);
+}
+
+/************************** End ASTCodeStatement *******************************/
+
 /*************************** ASTCodeBlock **************************************/
 ASTCodeBlock::ASTCodeBlock()
 {
 	return;
+}
+
+void ASTCodeBlock::addStatement(ASTCodeStatement *statement)
+{
+	statements.push_back(statement);
 }
 
 void ASTCodeBlock::accept(Visitor *v)

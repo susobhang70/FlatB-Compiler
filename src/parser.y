@@ -11,11 +11,12 @@
 %}
 
 %type <program> program
-%type <variable> identifierdecl
-%type <variableSet> midentifiers
-%type <decl_line> decl_line
 %type <decl_block> declaration
-%type <code_statements> statements
+%type <decl_line> decl_line
+%type <variableSet> midentifiers
+%type <variable> identifierdecl
+%type <code_block> statements
+%type <code_statement> statement_line
 
 %token DECLBLOCK
 %token CODEBLOCK
@@ -94,26 +95,29 @@ midentifiers:	identifierdecl
 				}
 				;
 
-statements:		gotolabel statement_line statements		/* Note to self: This is wrong, labels in between a statement gets accepted */
+statements:		statements gotolabel statement_line		/* Note to self: Correction - This actually works */
 				{
-					$$ = new ASTCodeBlock();
+					$$->addStatement($3);
 				}
 				| gotolabel statement_line
 				{
 					$$ = new ASTCodeBlock();
+					$$->addStatement($2);
 				}
-				| statement_line statements
+				| statements statement_line
 				{
-					$$ = new ASTCodeBlock();
+					$$->addStatement($2);
 				}
 				| statement_line
 				{
 					$$ = new ASTCodeBlock();
+					$$->addStatement($1);
 				}
 				;
 
 identifier:		IDENTIFIER '[' IDENTIFIER ']'			/* Note to self: make this mathexp instead of IDENTIFIER */
-				| identifierdecl
+				| IDENTIFIER '[' NUMBER ']'
+				| IDENTIFIER
 				;
 
 identifierdecl:	IDENTIFIER '[' NUMBER ']'				/* identifier declaration */
@@ -126,11 +130,10 @@ identifierdecl:	IDENTIFIER '[' NUMBER ']'				/* identifier declaration */
 				}
 				;
 
-mathexp:		mathexp '+' mathexp
+mathexp:		mathexp '+' mathexp						/* Note to self: Accept unary statements here */
 				| mathexp '-' mathexp
 				| mathexp '*' mathexp
 				| mathexp '/' mathexp
-				| mathexp '^' mathexp
 				| '(' mathexp ')'
 				| number
 				| identifier
@@ -141,7 +144,13 @@ number:			'-' NUMBER
 				;
 
 assignment:		identifier '=' assignment
+				{
+					$$ = new ASTAssignment($1, $3);
+				}
 				| identifier '=' mathexp
+				{
+					$$ = new ASTAssignment($1, $3);
+				}
 				;
 
 cond_statement:	mathexp cond_op cond_statement
@@ -165,12 +174,33 @@ print:			PRINT
 				;
 
 statement_line:	assignment ';'
+				{
+					$$ = new ASTCodeStatement($1);
+				}
 				| forloop
+				{
+					$$ = new ASTCodeStatement(NULL);
+				}
 				| whileloop
+				{
+					$$ = new ASTCodeStatement(NULL);
+				}
 				| ifelse
+				{
+					$$ = new ASTCodeStatement(NULL);
+				}
 				| iostatement ';'
+				{
+					$$ = new ASTCodeStatement(NULL);
+				}
 				| gotoblock ';'
+				{
+					$$ = new ASTCodeStatement(NULL);
+				}
 				| ';'
+				{
+					$$ = new ASTCodeStatement(NULL);
+				}
 				;
 
 gotolabel:		IDENTIFIER ':'
