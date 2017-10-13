@@ -60,11 +60,26 @@ class ASTNode
 		virtual void accept(Visitor *) = 0;
 };
 
+class ASTCodeStatement: public ASTNode
+{
+	friend class ASTVisitor;
+	private:
+		something;
+
+	public:
+		ASTCodeStatement();
+		void accept(Visitor *);
+};
+
 class ASTCodeBlock: public ASTNode
 {
 	friend class ASTVisitor;
+	private:
+		vector<ASTCodeStatement *> statements; 
+
 	public:
 		ASTCodeBlock();
+		void addStatement(ASTCodeStatement *);
 		void accept(Visitor *);
 };
 

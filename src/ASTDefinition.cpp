@@ -61,8 +61,10 @@ void ASTVisitor::visit(ASTProgram *program)
 	xml << "<?xml version=\'1.0\' encoding=\'UTF-8\'?>" << endl;
 	xml << "<program language=\'Flat-B\'>" << endl;
 	tabs++;
-	program->decl_block->accept(this);
-	program->code_block->accept(this);
+	if(program->decl_block)						// could be that there is no decl block
+		program->decl_block->accept(this);
+	if(program->code_block)						// could be that there is no code block
+		program->code_block->accept(this);
 	tabs--;
 	xml << "</program>" << endl;
 }

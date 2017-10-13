@@ -28,7 +28,7 @@
 %token PRINTLN
 %token READ
 %token GOTO
-%token <string> TYPE IDENTIFIER NEWLINE
+%token <string> TYPE IDENTIFIER
 %token ETOK
 %token EQTO
 %token LEQ
@@ -74,11 +74,11 @@ declaration:	decl_line
 				}
 				;
 
-decl_line: 		TYPE midentifiers NEWLINE				/* decl line RE */
+decl_line: 		TYPE midentifiers ';'				/* decl line RE */
 				{
 					$$ = new ASTDeclStatement(string($1), $2);
 				}
-				| error NEWLINE
+				| error ';'
 				{
 					yyerrok;
 				}
@@ -94,7 +94,7 @@ midentifiers:	identifierdecl
 				}
 				;
 
-statements:		gotolabel statement_line statements		/* codeblock statements */
+statements:		gotolabel statement_line statements		/* Note to self: This is wrong, labels in between a statement gets accepted */
 				{
 					$$ = new ASTCodeBlock();
 				}
@@ -164,19 +164,19 @@ print:			PRINT
 				| PRINTLN
 				;
 
-statement_line:	assignment NEWLINE
+statement_line:	assignment ';'
 				| forloop
 				| whileloop
 				| ifelse
-				| iostatement NEWLINE
-				| gotoblock NEWLINE
-				| NEWLINE
+				| iostatement ';'
+				| gotoblock ';'
+				| ';'
 				;
 
 gotolabel:		IDENTIFIER ':'
 
 forloop:		FORLOOP forloopdetails '{' statements '}'
-				| FORLOOP forloopdetails NEWLINE
+				| FORLOOP forloopdetails ';'
 				;
 
 forloopdetails:	assignment ',' mathexp ',' mathexp

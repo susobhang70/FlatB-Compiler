@@ -87,7 +87,7 @@
 ","		return ',';
 ":"		return ':';
 """		return '"';
-";"		return NEWLINE;
+";"		return ';';
 
 [ \t]		{ /* Do nothing */ }
 .		{ 
