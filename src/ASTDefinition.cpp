@@ -13,15 +13,99 @@ void insertTabs()
 		xml << "\t";
 }
 
+string toStringOperation(Operation op)
+{
+	switch(op)
+	{
+		case add:
+			return "+";
+			break;
+
+		case sub:
+			return "-";
+			break;
+
+		case mult:
+			return "*";
+			break;
+
+		case divd:
+			return "/";
+			break;
+
+		case usub:
+			return "usub";
+			break;
+
+		case noop:
+			return "";
+			break;
+	}
+}
+
 /*************************** ASTVisitor ****************************************/
 ASTVisitor::ASTVisitor()
 {
 	return;
 }
 
-void ASTVisitor::visit(ASTCodeStatement *code_statement)
+void ASTVisitor::visit(ASTMathExpr *mathexpr)
 {
-	return;
+	insertTabs();
+	xml << "<mathexpr operation=\'" << toStringOperation(mathexpr->op) << "\'>" << endl;
+	tabs++;
+	if(mathexpr->ltree)
+		mathexpr->ltree->accept(this);
+	if(mathexpr->rtree)
+		mathexpr->rtree->accept(this);
+	tabs--;
+	insertTabs();
+	xml << "</mathexpr>" << endl;
+}
+
+void ASTVisitor::visit(ASTInteger *integer)
+{
+	insertTabs();
+	xml << "<literal value=\'" << integer->lexval << "\'>" << endl;
+}
+
+void ASTVisitor::visit(ASTTargetVar *var_location)
+{
+	insertTabs();
+	xml << "<var_location name=\'" << var_location->var_name << "\' ";
+
+	if(var_location->op != noop)
+		xml << "operation=\'" << toStringOperation(var_location->op) <<"\' ";
+
+	if(var_location->array_type)
+	{
+		tabs++;
+		xml << ">" << endl;
+		insertTabs();
+		xml << "<index>" << endl;
+		tabs++;
+		var_location->rtree->accept(this);
+		tabs--;
+		insertTabs();
+		xml << "</index>" << endl;
+		tabs--;
+		insertTabs();
+		xml << "</var_location>" << endl;
+	}
+	else
+		xml << "/>" << endl;
+}
+
+void ASTVisitor::visit(ASTAssignment *assignment)
+{
+	insertTabs();
+	xml << "<equals>" << endl;
+	tabs++;
+	assignment->target->accept(this);
+	assignment->rexpr->accept(this);
+	tabs--;
+	insertTabs();
+	xml << "</equals>" << endl;
 }
 
 void ASTVisitor::visit(ASTCodeBlock *code_block)
@@ -84,15 +168,102 @@ void ASTVisitor::visit(ASTProgram *program)
 
 /************************** End ASTVisitor *************************************/
 
-/*************************** ASTCodeStatement **********************************/
-ASTCodeStatement::ASTCodeStatement()
+/*************************** ASTInteger **********************************/
+
+ASTInteger::ASTInteger(int lexval)
+{
+	this->lexval = lexval;
+}
+
+void ASTInteger::accept(Visitor *v)
+{
+	v->visit(this);
+}
+
+/************************** End ASTInteger *******************************/
+
+/*************************** ASTMathExpr **********************************/
+ASTMathExpr::ASTMathExpr(ASTNode *ltree, ASTNode *rtree, Operation op)
+{
+	this->ltree = ltree;
+	this->rtree = rtree;
+	this->op = op;
+}
+
+ASTMathExpr::ASTMathExpr(ASTNode *rtree, Operation op)
+{
+	this->ltree = nullptr;
+	this->rtree = rtree;
+	this->op = op;
+}
+
+ASTMathExpr::ASTMathExpr()
 {
 	return;
 }
 
-void ASTCodeStatement::accept(Visitor *v)
+void ASTMathExpr::accept(Visitor *v)
 {
 	v->visit(this);
+}
+
+/************************** End ASTMathExpr *******************************/
+
+/*************************** ASTTargetVar **********************************/
+ASTTargetVar::ASTTargetVar(string var_name, ASTNode *expr) : ASTMathExpr(expr, noop)
+{
+	this->var_name = var_name;
+	array_type = true;
+}
+
+ASTTargetVar::ASTTargetVar(string var_name)
+{
+	this->var_name = var_name;
+	array_type = false;
+	setOp(noop);
+}
+
+ASTTargetVar::ASTTargetVar(string var_name, ASTNode *expr, Operation op) : ASTTargetVar(var_name, expr)
+{
+	setOp(op);
+}
+
+ASTTargetVar::ASTTargetVar(string var_name, Operation op) : ASTTargetVar(var_name)
+{
+	setOp(op);
+}
+
+void ASTTargetVar::setOp(Operation op)
+{
+	this->op = op;
+}
+
+void ASTTargetVar::accept(Visitor *v)
+{
+	v->visit(this);
+}
+
+/************************** End ASTTargetVar *******************************/
+
+/*************************** ASTAssignment **********************************/
+ASTAssignment::ASTAssignment(ASTTargetVar *target, ASTNode *rexpr)
+{
+	this->target = target;
+	this->rexpr = rexpr;
+}
+
+void ASTAssignment::accept(Visitor *v)
+{
+	v->visit(this);
+}
+
+/************************** End ASTCodeStatement *******************************/
+
+/*************************** ASTCodeStatement **********************************/
+
+void ASTCodeStatement::accept(Visitor *v)
+{
+	return;
 }
 
 /************************** End ASTCodeStatement *******************************/

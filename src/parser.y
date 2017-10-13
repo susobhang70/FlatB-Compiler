@@ -17,6 +17,9 @@
 %type <variable> identifierdecl
 %type <code_block> statements
 %type <code_statement> statement_line
+%type <assignment> assignment
+%type <var_location> identifier
+%type <mathexpr> mathexp
 
 %token DECLBLOCK
 %token CODEBLOCK
@@ -115,9 +118,14 @@ statements:		statements gotolabel statement_line		/* Note to self: Correction - 
 				}
 				;
 
-identifier:		IDENTIFIER '[' IDENTIFIER ']'			/* Note to self: make this mathexp instead of IDENTIFIER */
-				| IDENTIFIER '[' NUMBER ']'
+identifier:		IDENTIFIER '[' mathexp ']'			/* Note to self: make this mathexp instead of IDENTIFIER */
+				{
+					$$ = new ASTTargetVar($1, $3);
+				}
 				| IDENTIFIER
+				{
+					$$ = new ASTTargetVar($1);
+				}
 				;
 
 identifierdecl:	IDENTIFIER '[' NUMBER ']'				/* identifier declaration */
@@ -130,17 +138,43 @@ identifierdecl:	IDENTIFIER '[' NUMBER ']'				/* identifier declaration */
 				}
 				;
 
-mathexp:		mathexp '+' mathexp						/* Note to self: Accept unary statements here */
+mathexp:		mathexp '+' mathexp						/* Note to self: Accept unary statements here - Update: done */
+				{
+					$$ = new ASTMathExpr($1, $3, add);
+				}
 				| mathexp '-' mathexp
+				{
+					$$ = new ASTMathExpr($1, $3, sub);
+				}
 				| mathexp '*' mathexp
+				{
+					$$ = new ASTMathExpr($1, $3, mult);
+				}
 				| mathexp '/' mathexp
+				{
+					$$ = new ASTMathExpr($1, $3, divd);
+				}
 				| '(' mathexp ')'
-				| number
-				| identifier
-				;
-
-number:			'-' NUMBER
+				{
+					$$ = new ASTMathExpr($2, noop);
+				}
 				| NUMBER
+				{
+					$$ = new ASTInteger($1);
+				}
+				| '-' NUMBER
+				{
+					$$ = new ASTInteger(-$2);
+				}
+				| '-' identifier
+				{
+					$2->setOp(usub);
+					$$ = $2;
+				}
+				| identifier
+				{
+					$$ = $1;
+				}
 				;
 
 assignment:		identifier '=' assignment
@@ -175,31 +209,31 @@ print:			PRINT
 
 statement_line:	assignment ';'
 				{
-					$$ = new ASTCodeStatement($1);
+					$$ = $1;
 				}
 				| forloop
 				{
-					$$ = new ASTCodeStatement(NULL);
+					$$ = new ASTCodeStatement();
 				}
 				| whileloop
 				{
-					$$ = new ASTCodeStatement(NULL);
+					$$ = new ASTCodeStatement();
 				}
 				| ifelse
 				{
-					$$ = new ASTCodeStatement(NULL);
+					$$ = new ASTCodeStatement();
 				}
 				| iostatement ';'
 				{
-					$$ = new ASTCodeStatement(NULL);
+					$$ = new ASTCodeStatement();
 				}
 				| gotoblock ';'
 				{
-					$$ = new ASTCodeStatement(NULL);
+					$$ = new ASTCodeStatement();
 				}
 				| ';'
 				{
-					$$ = new ASTCodeStatement(NULL);
+					$$ = new ASTCodeStatement();
 				}
 				;
 

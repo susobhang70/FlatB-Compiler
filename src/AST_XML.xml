@@ -7,5 +7,13 @@
 		<variable name='sum' type='int' />
 	</declarations>
 	<code>
+		<equals>
+			<var_location name='data' >
+				<index>
+					<var_location name='sum' operation='usub' />
+				</index>
+			</var_location>
+			<var_location name='i' />
+		</equals>
 	</code>
 </program>
