@@ -34,7 +34,20 @@ union NODE
 	{
 		number = 0;
 		string = nullptr;
+		ioblock = nullptr;
+		gotoblock = nullptr;
+		ifelse = nullptr;
+		condition = nullptr;
+		whileloop = nullptr;
+		forloop = nullptr;
+		mathexpr = nullptr;
+		integer = nullptr;
+		var_location = nullptr;
+		assignment = nullptr;
+		code_statement = nullptr;
+		code_block = nullptr;
 		variable = nullptr;
+		variableSet = nullptr;
 		decl_line = nullptr;
 		decl_block = nullptr;
 		program = nullptr;
