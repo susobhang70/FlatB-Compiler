@@ -7,7 +7,7 @@
 
   int yylex (void);
   void yyerror (char const *s);
-  ASTProgram *start = NULL;
+  ASTProgram *start = nullptr;
 %}
 
 %type <program> program
@@ -20,6 +20,12 @@
 %type <assignment> assignment
 %type <var_location> identifier
 %type <mathexpr> mathexp
+%type <forloop> forloop
+%type <whileloop> whileloop
+%type <condition> cond_statement
+%type <ifelse> ifelse
+%type <gotoblock> gotoblock
+%type <ioblock> iostatement;
 
 %token DECLBLOCK
 %token CODEBLOCK
@@ -32,13 +38,12 @@
 %token PRINTLN
 %token READ
 %token GOTO
-%token <string> TYPE IDENTIFIER
+%token <string> TYPE IDENTIFIER STRINGID
 %token ETOK
 %token EQTO
 %token LEQ
 %token GEQ
 %token NEQ
-%token STRINGID
 
 %left '+'
 %left '-'
@@ -55,15 +60,15 @@ program:		DECLBLOCK '{' declaration '}' CODEBLOCK '{' statements '}'
 				}
 				| DECLBLOCK '{' '}'	CODEBLOCK '{' statements '}'
 				{
-					$$ = new ASTProgram(NULL, $6);
+					$$ = new ASTProgram($6);
 				}
 				|DECLBLOCK '{' declaration '}' CODEBLOCK '{' '}'
 				{
-					$$ = new ASTProgram($3, NULL);
+					$$ = new ASTProgram($3);
 				}
 				|DECLBLOCK '{' '}' CODEBLOCK '{' '}'
 				{
-					$$ = new ASTProgram(NULL, NULL);
+					$$ = new ASTProgram();
 				}
 				;
 
@@ -86,6 +91,7 @@ decl_line: 		TYPE midentifiers ';'				/* decl line RE */
 				{
 					yyerrok;
 				}
+				;
 
 midentifiers:	identifierdecl
 				{
@@ -98,14 +104,16 @@ midentifiers:	identifierdecl
 				}
 				;
 
-statements:		statements gotolabel statement_line		/* Note to self: Correction - This actually works */
+statements:		statements IDENTIFIER ':' statement_line		/* Note to self: include goto */
 				{
-					$$->addStatement($3);
+					$4->setLabel($2);
+					$$->addStatement($4);
 				}
-				| gotolabel statement_line
+				| IDENTIFIER ':' statement_line
 				{
 					$$ = new ASTCodeBlock();
-					$$->addStatement($2);
+					$3->setLabel($1);
+					$$->addStatement($3);
 				}
 				| statements statement_line
 				{
@@ -118,7 +126,7 @@ statements:		statements gotolabel statement_line		/* Note to self: Correction - 
 				}
 				;
 
-identifier:		IDENTIFIER '[' mathexp ']'			/* Note to self: make this mathexp instead of IDENTIFIER */
+identifier:		IDENTIFIER '[' mathexp ']'
 				{
 					$$ = new ASTTargetVar($1, $3);
 				}
@@ -138,7 +146,7 @@ identifierdecl:	IDENTIFIER '[' NUMBER ']'				/* identifier declaration */
 				}
 				;
 
-mathexp:		mathexp '+' mathexp						/* Note to self: Accept unary statements here - Update: done */
+mathexp:		mathexp '+' mathexp
 				{
 					$$ = new ASTMathExpr($1, $3, add);
 				}
@@ -187,24 +195,45 @@ assignment:		identifier '=' assignment
 				}
 				;
 
-cond_statement:	mathexp cond_op cond_statement
-				| mathexp cond_op mathexp
-				;
-
-cond_op:		GEQ
-				|LEQ
-				|'>'
-				|'<'
-				|EQTO
-				|NEQ
+cond_statement:	mathexp GEQ mathexp
+				{
+					$$ = new ASTCondExpr($1, geq, $3);
+				}
+				| mathexp LEQ mathexp
+				{
+					$$ = new ASTCondExpr($1, leq, $3);
+				}
+				| mathexp '>' mathexp
+				{
+					$$ = new ASTCondExpr($1, grt, $3);
+				}
+				| mathexp '<' mathexp
+				{
+					$$ = new ASTCondExpr($1, les, $3);
+				}
+				| mathexp EQTO mathexp
+				{
+					$$ = new ASTCondExpr($1, eqto, $3);
+				}
+				| mathexp NEQ mathexp
+				{
+					$$ = new ASTCondExpr($1, neq, $3);
+				}
+				| '!' cond_statement
+				{
+					$$ = $2;
+					$$->flipNot();
+				}
 				;
 
 gotoblock:		GOTO IDENTIFIER IF cond_statement
+				{
+					$$ = new ASTGotoBlock($2, $4);
+				}
 				| GOTO IDENTIFIER
-				;
-
-print:			PRINT
-				| PRINTLN
+				{
+					$$ = new ASTGotoBlock($2);
+				}
 				;
 
 statement_line:	assignment ';'
@@ -213,23 +242,23 @@ statement_line:	assignment ';'
 				}
 				| forloop
 				{
-					$$ = new ASTCodeStatement();
+					$$ = $1;
 				}
 				| whileloop
 				{
-					$$ = new ASTCodeStatement();
+					$$ = $1;
 				}
 				| ifelse
 				{
-					$$ = new ASTCodeStatement();
+					$$ = $1;
 				}
 				| iostatement ';'
 				{
-					$$ = new ASTCodeStatement();
+					$$ = $1;
 				}
 				| gotoblock ';'
 				{
-					$$ = new ASTCodeStatement();
+					$$ = $1;
 				}
 				| ';'
 				{
@@ -237,26 +266,59 @@ statement_line:	assignment ';'
 				}
 				;
 
-gotolabel:		IDENTIFIER ':'
-
-forloop:		FORLOOP forloopdetails '{' statements '}'
-				| FORLOOP forloopdetails ';'
-				;
-
-forloopdetails:	assignment ',' mathexp ',' mathexp
-				| assignment ',' mathexp
+forloop:		FORLOOP assignment ',' mathexp ',' mathexp '{' statements '}'
+				{
+					$$ = new ASTForLoop($2, $4, $6, $8);
+				}
+				| FORLOOP assignment ',' mathexp '{' statements '}'
+				{
+					$$ = new ASTForLoop($2, $4, $6);
+				}
 				;
 
 whileloop:		WHILELOOP cond_statement '{' statements '}'
+				{
+					$$ = new ASTWhileLoop($2, $4);
+				}
 
 ifelse:			IF cond_statement '{' statements '}' ELSE '{' statements '}'
+				{
+					$$ = new ASTIfElse($2, $4, $8);
+				}
 				| IF cond_statement '{' statements '}'
+				{
+					$$ = new ASTIfElse($2, $4);
+				}
 				;
 
-iostatement:	print STRINGID ',' midentifiers
-				| print STRINGID
-				| print midentifiers
+iostatement:	PRINT STRINGID ',' mathexp
+				{
+					$$ = new ASTIOBlock(print, $2, $4);
+				}
+				| PRINTLN STRINGID ',' mathexp
+				{
+					$$ = new ASTIOBlock(println, $2, $4);
+				}
+				| PRINT STRINGID
+				{
+					$$ = new ASTIOBlock(print, $2);
+				}
+				| PRINTLN STRINGID
+				{
+					$$ = new ASTIOBlock(println, $2);
+				}
+				| PRINT mathexp
+				{
+					$$ = new ASTIOBlock(print, $2);
+				}
+				| PRINTLN mathexp
+				{
+					$$ = new ASTIOBlock(println, $2);
+				}
 				| READ identifier
+				{
+					$$ = new ASTIOBlock(readvar, $2);
+				}
 				;
 
 

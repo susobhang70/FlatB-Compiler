@@ -83,6 +83,7 @@
 "<="	return LEQ;
 "<"		return '<';
 "="		return '=';
+"!"		return '!';
 ","		return ',';
 ":"		return ':';
 """		return '"';

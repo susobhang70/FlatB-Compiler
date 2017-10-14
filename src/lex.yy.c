@@ -366,8 +366,8 @@ static void yy_fatal_error (yyconst char msg[]  );
 	*yy_cp = '\0'; \
 	(yy_c_buf_p) = yy_cp;
 
-#define YY_NUM_RULES 36
-#define YY_END_OF_BUFFER 37
+#define YY_NUM_RULES 37
+#define YY_END_OF_BUFFER 38
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -377,16 +377,16 @@ struct yy_trans_info
 	};
 static yyconst flex_int16_t yy_accept[98] =
     {   0,
-        0,    0,   37,   35,   34,   36,   34,   35,   35,   19,
-       21,   30,   22,   20,   12,   31,   33,   28,   29,   26,
-       14,   15,   16,   35,   14,   14,   14,   14,   14,   14,
+        0,    0,   38,   36,   35,   37,   35,   30,   36,   19,
+       21,   31,   22,   20,   12,   32,   34,   28,   29,   26,
+       14,   15,   16,   36,   14,   14,   14,   14,   14,   14,
        14,   14,   14,   17,   18,    0,   24,    0,   13,    0,
        12,   27,   23,   25,    0,   14,   14,   14,   14,   14,
        14,    6,   14,   14,   14,   14,    0,   14,   14,   14,
         4,   14,    3,   14,   14,   14,    0,   14,   14,    7,
        11,   14,    8,   14,    0,   14,   14,    9,    5,    0,
        14,   14,   14,    0,   14,   14,   10,    0,   14,   14,
-        0,    2,    1,    0,    0,   32,    0
+        0,    2,    1,    0,    0,   33,    0
 
     } ;
 
@@ -1004,42 +1004,47 @@ return '=';
 case 30:
 YY_RULE_SETUP
 #line 86 "scanner.l"
-return ',';
+return '!';
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
 #line 87 "scanner.l"
-return ':';
+return ',';
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
 #line 88 "scanner.l"
-
+return ':';
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
 #line 89 "scanner.l"
-return ';';
+
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 91 "scanner.l"
-{ /* Do nothing */ }
+#line 90 "scanner.l"
+return ';';
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
 #line 92 "scanner.l"
+{ /* Do nothing */ }
+	YY_BREAK
+case 36:
+YY_RULE_SETUP
+#line 93 "scanner.l"
 { 
 		  printf("Unexpected token encountered: %s\n", yytext); 
 		  return ETOK;
 		}
 	YY_BREAK
-case 36:
+case 37:
 YY_RULE_SETUP
-#line 96 "scanner.l"
+#line 97 "scanner.l"
 ECHO;
 	YY_BREAK
-#line 1043 "lex.yy.c"
+#line 1048 "lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -2037,4 +2042,4 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 96 "scanner.l"
+#line 97 "scanner.l"

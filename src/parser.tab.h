@@ -58,12 +58,12 @@ extern int yydebug;
     GOTO = 268,
     TYPE = 269,
     IDENTIFIER = 270,
-    ETOK = 271,
-    EQTO = 272,
-    LEQ = 273,
-    GEQ = 274,
-    NEQ = 275,
-    STRINGID = 276
+    STRINGID = 271,
+    ETOK = 272,
+    EQTO = 273,
+    LEQ = 274,
+    GEQ = 275,
+    NEQ = 276
   };
 #endif
 
