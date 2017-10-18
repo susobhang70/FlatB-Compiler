@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <map>
 
 using namespace std;
 
@@ -8,6 +9,7 @@ enum Operation {add, sub, mult, divd, usub, noop};
 enum Condition {grt, geq, les, leq, neq, eqto};
 enum IOInstruction {print, println, readvar};
 
+// This is the union NODE, which will be used in bison
 union NODE
 {
 	int number;
@@ -60,32 +62,77 @@ union NODE
 typedef union NODE YYSTYPE;
 #define YYSTYPE_IS_DECLARED 1
 
+// The base virtual class for Visitor Design Pattern
 class Visitor
 {
 	public:
-		virtual void visit(ASTIOBlock *) = 0;
-		virtual void visit(ASTGotoBlock *) = 0;
-		virtual void visit(ASTIfElse *) = 0;
-		virtual void visit(ASTCondExpr *) = 0;
-		virtual void visit(ASTForLoop *) = 0;
-		virtual void visit(ASTWhileLoop *) = 0;
-		virtual void visit(ASTMathExpr *) = 0;
-		virtual void visit(ASTInteger *) = 0;
-		virtual void visit(ASTTargetVar *) = 0;
-		virtual void visit(ASTAssignment *) = 0;
-		virtual void visit(ASTCodeBlock *) = 0;
-		virtual void visit(ASTVariable *) = 0;
-		virtual void visit(ASTVariableSet *) = 0;
+		virtual void visit(ASTIOBlock 		*) = 0;
+		virtual void visit(ASTGotoBlock 	*) = 0;
+		virtual void visit(ASTIfElse 		*) = 0;
+		virtual void visit(ASTCondExpr 		*) = 0;
+		virtual void visit(ASTForLoop 		*) = 0;
+		virtual void visit(ASTWhileLoop 	*) = 0;
+		virtual void visit(ASTMathExpr 		*) = 0;
+		virtual void visit(ASTInteger 		*) = 0;
+		virtual void visit(ASTTargetVar 	*) = 0;
+		virtual void visit(ASTAssignment 	*) = 0;
+		virtual void visit(ASTCodeBlock 	*) = 0;
+		virtual void visit(ASTVariable 		*) = 0;
+		virtual void visit(ASTVariableSet 	*) = 0;
 		virtual void visit(ASTDeclStatement *) = 0;
-		virtual void visit(ASTDeclBlock *) = 0;
-		virtual void visit(ASTProgram *) = 0;
+		virtual void visit(ASTDeclBlock 	*) = 0;
+		virtual void visit(ASTProgram 		*) = 0;
+
+		virtual bool visit_value(ASTCondExpr *) = 0;
+		virtual int  visit_value(ASTMathExpr *) = 0;
+		virtual int  visit_value(ASTTargetVar*) = 0;
+		virtual int  visit_value(ASTInteger  *) = 0;
+		virtual void visit_value(ASTTargetVar*, int) = 0;
 };
 
+class ASTNode
+{
+	protected:
+		ASTNode *parent;
+
+	public:
+		void setParent(ASTNode *);
+		ASTNode* getParent();
+		virtual void accept(Visitor *) = 0;
+};
+
+// Symbol Table Entry class, whose objects will be stored in a map
+class SymbolTableEntry
+{
+	private:
+		string identifier;
+		unsigned int size;
+		int *value;
+		bool isArray;
+		ASTCodeStatement *node;
+
+	public:
+		SymbolTableEntry(string, unsigned int);
+		SymbolTableEntry(string);
+		SymbolTableEntry(string, ASTCodeStatement*);
+		ASTCodeStatement* getLabelPtr();
+		int getValue(unsigned int);
+		int getValue();
+		void setValue(unsigned int, int);
+		void setValue(int);
+};
+
+// The derived ASTVisitor class for outputting the AST to XML
 class ASTVisitor: public Visitor
 {
+	private:
+		map<string, SymbolTableEntry *> symboltable;
+
 	public:
 		ASTVisitor();
 		void printLabel(ASTCodeStatement *);
+		map<string, SymbolTableEntry *> getSymbolTable();
+
 		void visit(ASTIOBlock *);
 		void visit(ASTGotoBlock *);
 		void visit(ASTIfElse *);
@@ -102,72 +149,116 @@ class ASTVisitor: public Visitor
 		void visit(ASTDeclStatement *);
 		void visit(ASTDeclBlock *);
 		void visit(ASTProgram *);
+
+		bool visit_value(ASTCondExpr *) { return true; }
+		int  visit_value(ASTMathExpr *) { return 0; }
+		int  visit_value(ASTTargetVar*) { return 0; }
+		int  visit_value(ASTInteger  *) { return 0; }
+		void visit_value(ASTTargetVar*, int) { return; }
 };
 
-class ASTNode
+// The derived ASTInterpreter class for interpreter
+class ASTInterpreter: public Visitor
 {
+	private:
+		map<string, SymbolTableEntry *> symboltable;
+		ASTCodeStatement *nextGotoNode;
+
 	public:
-		virtual void accept(Visitor *) = 0;
+		ASTInterpreter(map<string, SymbolTableEntry *>);
+		void visit(ASTIOBlock *);
+		void visit(ASTGotoBlock *);
+		void visit(ASTIfElse *);
+		void visit(ASTCondExpr *);
+		void visit(ASTForLoop *);
+		void visit(ASTWhileLoop *);
+		void visit(ASTMathExpr *);
+		void visit(ASTInteger *);
+		void visit(ASTTargetVar *);
+		void visit(ASTAssignment *);
+		void visit(ASTCodeBlock *);
+		void visit(ASTVariable *);
+		void visit(ASTVariableSet *);
+		void visit(ASTDeclStatement *);
+		void visit(ASTDeclBlock *);
+		void visit(ASTProgram *);
+
+		bool visit_value(ASTCondExpr *);
+		int  visit_value(ASTMathExpr *);
+		int  visit_value(ASTTargetVar*);
+		int  visit_value(ASTInteger  *);
+		void visit_value(ASTTargetVar*, int);
 };
 
 class ASTCondExpr: public ASTNode
 {
 	friend class ASTVisitor;
+	friend class ASTInterpreter;
 	private:
-		ASTNode *ltree, *rtree;
+		ASTMathExpr *ltree, *rtree;
 		Condition condition;
 		bool unot;
 
 	public:
-		ASTCondExpr(ASTNode *, Condition, ASTNode *);
+		ASTCondExpr(ASTMathExpr *, Condition, ASTMathExpr *);
 		void flipNot();
 		void accept(Visitor *);
+		bool accept_value(Visitor *);
 };
 
 class ASTMathExpr: public ASTNode
 {
 	friend class ASTVisitor;
+	friend class ASTInterpreter;
 	protected:
-		ASTNode *ltree, *rtree;
+		ASTMathExpr *ltree, *rtree;
 		Operation op;
 		ASTMathExpr();
 
 	public:
-		ASTMathExpr(ASTNode *, ASTNode *, Operation);
-		ASTMathExpr(ASTNode *, Operation);
+		ASTMathExpr(ASTMathExpr *, ASTMathExpr *, Operation);
+		ASTMathExpr(ASTMathExpr *, Operation);
 		void accept(Visitor *);
+		virtual int accept_value(Visitor *);
 };
 
 class ASTInteger: public ASTMathExpr
 {
 	friend class ASTVisitor;
+	friend class ASTInterpreter;
 	private:
 		int lexval;
 
 	public:
 		ASTInteger(int);
+		int getValue();
 		void accept(Visitor *);
+		int  accept_value(Visitor *);
 };
 
 class ASTTargetVar: public ASTMathExpr
 {
 	friend class ASTVisitor;
+	friend class ASTInterpreter;
 	private:
 		string var_name;
 		bool array_type;
 
 	public:
-		ASTTargetVar(string, ASTNode *);
-		ASTTargetVar(string, ASTNode *, Operation);
+		ASTTargetVar(string, ASTMathExpr *);
+		ASTTargetVar(string, ASTMathExpr *, Operation);
 		ASTTargetVar(string, Operation);
 		ASTTargetVar(string);
 		void setOp(Operation);
 		void accept(Visitor *);
+		int  accept_value(Visitor *);
+		void accept_value(Visitor *, int);
 };
 
 class ASTCodeStatement: public ASTNode
 {
 	friend class ASTVisitor;
+	friend class ASTInterpreter;
 	protected:
 		string label;
 
@@ -179,6 +270,7 @@ class ASTCodeStatement: public ASTNode
 class ASTIOBlock: public ASTCodeStatement
 {
 	friend class ASTVisitor;
+	friend class ASTInterpreter;
 	private:
 		IOInstruction iostmt;
 		string output;
@@ -195,6 +287,7 @@ class ASTIOBlock: public ASTCodeStatement
 class ASTGotoBlock: public ASTCodeStatement
 {
 	friend class ASTVisitor;
+	friend class ASTInterpreter;
 	private:
 		string targetlabel;
 		ASTCondExpr *condition;
@@ -207,18 +300,20 @@ class ASTGotoBlock: public ASTCodeStatement
 class ASTIfElse: public ASTCodeStatement
 {
 	friend class ASTVisitor;
+	friend class ASTInterpreter;
 	private:
 		ASTCondExpr *condition;
-		ASTNode *iftrue, *iffalse;
+		ASTCodeBlock *iftrue, *iffalse;
 	public:
-		ASTIfElse(ASTCondExpr *, ASTNode *, ASTNode *);
-		ASTIfElse(ASTCondExpr *, ASTNode *);
+		ASTIfElse(ASTCondExpr *, ASTCodeBlock *, ASTCodeBlock *);
+		ASTIfElse(ASTCondExpr *, ASTCodeBlock *);
 		void accept(Visitor *);
 };
 
 class ASTWhileLoop: public ASTCodeStatement
 {
 	friend class ASTVisitor;
+	friend class ASTInterpreter;
 	private:
 		ASTCondExpr *condition;
 		ASTCodeBlock *statements;
@@ -231,6 +326,7 @@ class ASTWhileLoop: public ASTCodeStatement
 class ASTForLoop: public ASTCodeStatement
 {
 	friend class ASTVisitor;
+	friend class ASTInterpreter;
 	private:
 		ASTAssignment *assignment;
 		ASTMathExpr *ulimit, *increment;
@@ -245,18 +341,20 @@ class ASTForLoop: public ASTCodeStatement
 class ASTAssignment: public ASTCodeStatement
 {
 	friend class ASTVisitor;
+	friend class ASTInterpreter;
 	private:
 		ASTTargetVar *target;
-		ASTNode *rexpr;
+		ASTMathExpr *rexpr;
 
 	public:
-		ASTAssignment(ASTTargetVar *, ASTNode *);
+		ASTAssignment(ASTTargetVar *, ASTMathExpr *);
 		void accept(Visitor *);
 };
 
 class ASTCodeBlock: public ASTNode
 {
 	friend class ASTVisitor;
+	friend class ASTInterpreter;
 	private:
 		vector<ASTCodeStatement *> statements;
 
@@ -269,6 +367,7 @@ class ASTCodeBlock: public ASTNode
 class ASTVariable: public ASTNode
 {
 	friend class ASTVisitor;
+	friend class ASTInterpreter;
 	private:
 		string var_name;
 		string data_type;
@@ -285,6 +384,7 @@ class ASTVariable: public ASTNode
 class ASTVariableSet: public ASTNode
 {
 	friend class ASTVisitor;
+	friend class ASTInterpreter;
 	private:
 		vector<ASTVariable *> variables;
 
@@ -297,6 +397,7 @@ class ASTVariableSet: public ASTNode
 class ASTDeclStatement: public ASTNode
 {
 	friend class ASTVisitor;
+	friend class ASTInterpreter;
 	private:
 		vector<ASTVariable *> variables;
 
@@ -308,6 +409,7 @@ class ASTDeclStatement: public ASTNode
 class ASTDeclBlock: public ASTNode
 {
 	friend class ASTVisitor;
+	friend class ASTInterpreter;
 	private:
 		vector<ASTDeclStatement *> statements;
 
@@ -320,6 +422,7 @@ class ASTDeclBlock: public ASTNode
 class ASTProgram: public ASTNode
 {
 	friend class ASTVisitor;
+	friend class ASTInterpreter;
 	private:
 		ASTDeclBlock *decl_block;
 		ASTCodeBlock *code_block;

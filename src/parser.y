@@ -87,10 +87,6 @@ decl_line: 		TYPE midentifiers ';'				/* decl line RE */
 				{
 					$$ = new ASTDeclStatement(string($1), $2);
 				}
-				| error ';'
-				{
-					yyerrok;
-				}
 				;
 
 midentifiers:	identifierdecl
@@ -107,12 +103,14 @@ midentifiers:	identifierdecl
 statements:		statements IDENTIFIER ':' statement_line		/* Note to self: include goto */
 				{
 					$4->setLabel($2);
+					$4->setParent($$);
 					$$->addStatement($4);
 				}
 				| IDENTIFIER ':' statement_line
 				{
 					$$ = new ASTCodeBlock();
 					$3->setLabel($1);
+					$3->setParent($$);
 					$$->addStatement($3);
 				}
 				| statements statement_line
@@ -185,11 +183,7 @@ mathexp:		mathexp '+' mathexp
 				}
 				;
 
-assignment:		identifier '=' assignment
-				{
-					$$ = new ASTAssignment($1, $3);
-				}
-				| identifier '=' mathexp
+assignment:		identifier '=' mathexp
 				{
 					$$ = new ASTAssignment($1, $3);
 				}
@@ -259,10 +253,6 @@ statement_line:	assignment ';'
 				| gotoblock ';'
 				{
 					$$ = $1;
-				}
-				| ';'
-				{
-					$$ = new ASTCodeStatement();
 				}
 				;
 
@@ -349,5 +339,7 @@ int main(int argc, char *argv[])
 	{
 		ASTVisitor v;
 		v.visit(start);
+		ASTInterpreter itpr(v.getSymbolTable());
+		itpr.visit(start);
 	}
 }

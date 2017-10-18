@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<program language='Flat-B'>
+	<declarations>
+		<variable name='k' type='int' />
+		<variable name='dummy' type='int' />
+		<variable name='i' type='int' />
+	</declarations>
+	<code>
+		<equals>
+			<var_location name='k' />
+			<integer value='0' />
+		</equals>
+		<label name='L1' />
+		<ifelseblock>
+			<condition unot='0' operation='=='>
+				<var_location name='k' />
+				<integer value='0' />
+			</condition>
+			<if>
+				<code>
+					<forloop>
+						<init>
+							<equals>
+								<var_location name='i' />
+								<integer value='1' />
+							</equals>
+						</init>
+						<limit>
+							<integer value='100' />
+						<limit>
+						<code>
+							<equals>
+								<var_location name='k' />
+								<mathexpr operation='+'>
+									<var_location name='k' />
+									<integer value='1' />
+								</mathexpr>
+							</equals>
+						</code>
+					</forloop>
+				</code>
+			</if>
+			<else>
+				<code>
+					<equals>
+						<var_location name='k' />
+						<integer value='200' />
+					</equals>
+				</code>
+			</else>
+		</ifelseblock>
+		<goto label='L1'>
+			<condition unot='0' operation='<'>
+				<var_location name='k' />
+				<integer value='100' />
+			</condition>
+		</goto>
+		<println>
+			<var_location name='k' />
+		</println>
+	</code>
+</program>
