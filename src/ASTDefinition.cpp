@@ -859,6 +859,11 @@ void ASTIOBlock::accept(Visitor *v)
 	v->visit(this);
 }
 
+Value *ASTIOBlock::codegen(CodeGenVisitor *v)
+{
+	return v->visit(this);
+}
+
 /************************** End ASTIOBlock ***********************************/
 
 /*************************** ASTGotoBlock ************************************/
@@ -875,6 +880,11 @@ ASTGotoBlock::ASTGotoBlock(string targetlabel):
 void ASTGotoBlock::accept(Visitor *v)
 {
 	v->visit(this);
+}
+
+Value *ASTGotoBlock::codegen(CodeGenVisitor *v)
+{
+	return v->visit(this);
 }
 
 /************************** End ASTGotoBlock *********************************/
@@ -894,6 +904,11 @@ ASTIfElse::ASTIfElse(ASTCondExpr *condition, ASTCodeBlock *iftrue):
 void ASTIfElse::accept(Visitor *v)
 {
 	v->visit(this);
+}
+
+Value *ASTIfElse::codegen(CodeGenVisitor *v)
+{
+	return v->visit(this);
 }
 
 /************************** End ASTIfElse ************************************/
@@ -920,6 +935,11 @@ int ASTInteger::accept_value(Visitor *v)
 	return v->visit_value(this);
 }
 
+Value *ASTInteger::codegen(CodeGenVisitor *v)
+{
+	return v->visit(this);
+}
+
 /************************** End ASTInteger ***********************************/
 
 /*************************** ASTCondExpr *************************************/
@@ -944,6 +964,11 @@ void ASTCondExpr::accept(Visitor *v)
 bool ASTCondExpr::accept_value(Visitor *v)
 {
 	return v->visit_value(this);
+}
+
+Value *ASTCondExpr::codegen(CodeGenVisitor *v)
+{
+	return v->visit(this);
 }
 
 /************************** End ASTCondExpr **********************************/
@@ -976,6 +1001,11 @@ void ASTMathExpr::accept(Visitor *v)
 int ASTMathExpr::accept_value(Visitor *v)
 {
 	return v->visit_value(this);
+}
+
+Value *ASTMathExpr::codegen(CodeGenVisitor *v)
+{
+	return v->visit(this);
 }
 
 /************************** End ASTMathExpr **********************************/
@@ -1027,6 +1057,11 @@ int ASTTargetVar::accept_value(Visitor *v)
 	return v->visit_value(this);
 }
 
+Value *ASTTargetVar::codegen(CodeGenVisitor *v)
+{
+	return v->visit(this);
+}
+
 /************************** End ASTTargetVar *********************************/
 
 /*************************** ASTWhileLoop ************************************/
@@ -1039,6 +1074,11 @@ ASTWhileLoop::ASTWhileLoop(ASTCondExpr *condition, ASTCodeBlock *statements)
 void ASTWhileLoop::accept(Visitor *v)
 {
 	v->visit(this);
+}
+
+Value *ASTWhileLoop::codegen(CodeGenVisitor *v)
+{
+	return v->visit(this);
 }
 
 /************************** End ASTWhileLoop *********************************/
@@ -1063,6 +1103,11 @@ void ASTForLoop::accept(Visitor *v)
 	v->visit(this);
 }
 
+Value *ASTForLoop::codegen(CodeGenVisitor *v)
+{
+	return v->visit(this);
+}
+
 /************************** End ASTForLoop ***********************************/
 
 /*************************** ASTAssignment ***********************************/
@@ -1075,6 +1120,11 @@ ASTAssignment::ASTAssignment(ASTTargetVar *target, ASTMathExpr *rexpr)
 void ASTAssignment::accept(Visitor *v)
 {
 	v->visit(this);
+}
+
+Value *ASTAssignment::codegen(CodeGenVisitor *v)
+{
+	return v->visit(this);
 }
 
 /************************** End ASTAssignment ********************************/
@@ -1110,6 +1160,11 @@ void ASTCodeBlock::accept(Visitor *v)
 	v->visit(this);
 }
 
+Value *ASTCodeBlock::codegen(CodeGenVisitor *v)
+{
+	return v->visit(this);
+}
+
 /************************** End ASTCodeBlock *********************************/
 
 /*************************** ASTVariable *************************************/
@@ -1136,6 +1191,11 @@ void ASTVariable::accept(Visitor *v)
 	v->visit(this);
 }
 
+Value *ASTVariable::codegen(CodeGenVisitor *v)
+{
+	return v->visit(this);
+}
+
 /************************** End ASTVariable **********************************/
 
 /*************************** ASTVariableSet **********************************/
@@ -1155,6 +1215,11 @@ void ASTVariableSet::accept(Visitor *v)
 	v->visit(this);
 }
 
+Value *ASTVariableSet::codegen(CodeGenVisitor *v)
+{
+	return v->visit(this);
+}
+
 /************************** End ASTVariableSet *******************************/
 
 /*************************** ASTDeclStatement ********************************/
@@ -1169,6 +1234,11 @@ ASTDeclStatement::ASTDeclStatement(string data_type,
 void ASTDeclStatement::accept(Visitor *v)
 {
 	v->visit(this);
+}
+
+Value *ASTDeclStatement::codegen(CodeGenVisitor *v)
+{
+	return v->visit(this);
 }
 
 /************************** End ASTDeclStatement *****************************/
@@ -1187,6 +1257,11 @@ void ASTDeclBlock::addStatement(ASTDeclStatement *statement)
 void ASTDeclBlock::accept(Visitor *v)
 {
 	v->visit(this);
+}
+
+Value *ASTDeclBlock::codegen(CodeGenVisitor *v)
+{
+	return v->visit(this);
 }
 
 /************************** End ASTDeclBlock *********************************/
@@ -1217,6 +1292,11 @@ ASTProgram::ASTProgram(): ASTProgram(nullptr, nullptr)
 void ASTProgram::accept(Visitor *v)
 {
 	v->visit(this);
+}
+
+Value *ASTProgram::codegen(CodeGenVisitor *v)
+{
+	return v->visit(this);
 }
 
 /***************************End ASTProgram ***********************************/

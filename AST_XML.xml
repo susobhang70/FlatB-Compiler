@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<program language='Flat-B'>
+	<declarations>
+		<variable name='a' type='int' />
+		<variable name='b' type='int' />
+	</declarations>
+	<code>
+		<equals>
+			<var_location name='a' />
+			<integer value='5' />
+		</equals>
+		<equals>
+			<var_location name='b' />
+			<var_location name='a' />
+		</equals>
+	</code>
+</program>

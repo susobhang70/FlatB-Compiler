@@ -1,5 +1,5 @@
 bcc:	parser.tab.c lex.yy.c
-	g++ parser.tab.c lex.yy.c ASTDefinition.cpp -std=c++11 -lfl -o bcc
+	g++ parser.tab.c lex.yy.c ASTDefinition.cpp CodeGen.cpp -g -O0 -std=c++11 -lfl  -o bcc `llvm-config-3.9 --cppflags --libs all --ldflags --system-libs`
 parser.tab.c: parser.y 
 	bison -d parser.y 
 parser.tab.h: parser.y

@@ -1,9 +1,23 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <stack>
 #include <map>
 
+#include "llvm/ADT/APFloat.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Type.h"
+#include "llvm/IR/Verifier.h"
+
 using namespace std;
+using namespace llvm;
 
 enum Operation {add, sub, mult, divd, usub, noop};
 enum Condition {grt, geq, les, leq, neq, eqto};
@@ -99,6 +113,7 @@ class ASTNode
 		void setParent(ASTNode *);
 		ASTNode* getParent();
 		virtual void accept(Visitor *) = 0;
+		virtual Value* codegen(class CodeGenVisitor *) = 0;
 };
 
 // Symbol Table Entry class, whose objects will be stored in a map
@@ -108,10 +123,10 @@ class SymbolTableEntry
 		string identifier;
 		unsigned int size;
 		int *value;
-		bool isArray;
 		ASTCodeStatement *node;
 
 	public:
+		bool isArray;
 		SymbolTableEntry(string, unsigned int);
 		SymbolTableEntry(string);
 		SymbolTableEntry(string, ASTCodeStatement*);
@@ -120,6 +135,42 @@ class SymbolTableEntry
 		int getValue();
 		void setValue(unsigned int, int);
 		void setValue(int);
+};
+
+class CodeGenVisitor
+{
+	private:
+		stack<BasicBlock *> blocks;
+		map<string, Value*> variables;
+		map<string, BasicBlock*> labels;
+		map<string, SymbolTableEntry *> symboltable;
+		Function *mainFunction;
+		int errors;
+
+	public:
+		CodeGenVisitor(map<string, SymbolTableEntry *> st);
+		void generateCode(ASTProgram*);
+		BasicBlock *currentBlock() { return blocks.top(); }
+		void pushBlock(BasicBlock *block) {blocks.push(block); }
+		void popBlock() { blocks.pop(); }
+
+		Value* checkLabel(ASTCodeStatement*);
+		Value* visit(ASTIOBlock 		*);
+		Value* visit(ASTGotoBlock 		*);
+		Value* visit(ASTIfElse 			*);
+		Value* visit(ASTCondExpr 		*);
+		Value* visit(ASTForLoop 		*);
+		Value* visit(ASTWhileLoop 		*);
+		Value* visit(ASTMathExpr 		*);
+		Value* visit(ASTInteger 		*);
+		Value* visit(ASTTargetVar 		*);
+		Value* visit(ASTAssignment 		*);
+		Value* visit(ASTCodeBlock 		*);
+		Value* visit(ASTVariable 		*);
+		Value* visit(ASTVariableSet 	*);
+		Value* visit(ASTDeclStatement 	*);
+		Value* visit(ASTDeclBlock 		*);
+		Value* visit(ASTProgram 		*);
 };
 
 // The derived ASTVisitor class for outputting the AST to XML
@@ -194,6 +245,7 @@ class ASTCondExpr: public ASTNode
 {
 	friend class ASTVisitor;
 	friend class ASTInterpreter;
+	friend class CodeGenVisitor;
 	private:
 		ASTMathExpr *ltree, *rtree;
 		Condition condition;
@@ -203,6 +255,7 @@ class ASTCondExpr: public ASTNode
 		ASTCondExpr(ASTMathExpr *, Condition, ASTMathExpr *);
 		void flipNot();
 		void accept(Visitor *);
+		Value* codegen(CodeGenVisitor*);
 		bool accept_value(Visitor *);
 };
 
@@ -210,6 +263,7 @@ class ASTMathExpr: public ASTNode
 {
 	friend class ASTVisitor;
 	friend class ASTInterpreter;
+	friend class CodeGenVisitor;
 	protected:
 		ASTMathExpr *ltree, *rtree;
 		Operation op;
@@ -219,6 +273,7 @@ class ASTMathExpr: public ASTNode
 		ASTMathExpr(ASTMathExpr *, ASTMathExpr *, Operation);
 		ASTMathExpr(ASTMathExpr *, Operation);
 		void accept(Visitor *);
+		Value* codegen(CodeGenVisitor*);
 		virtual int accept_value(Visitor *);
 };
 
@@ -226,6 +281,7 @@ class ASTInteger: public ASTMathExpr
 {
 	friend class ASTVisitor;
 	friend class ASTInterpreter;
+	friend class CodeGenVisitor;
 	private:
 		int lexval;
 
@@ -233,6 +289,7 @@ class ASTInteger: public ASTMathExpr
 		ASTInteger(int);
 		int getValue();
 		void accept(Visitor *);
+		Value* codegen(CodeGenVisitor*);
 		int  accept_value(Visitor *);
 };
 
@@ -240,6 +297,7 @@ class ASTTargetVar: public ASTMathExpr
 {
 	friend class ASTVisitor;
 	friend class ASTInterpreter;
+	friend class CodeGenVisitor;
 	private:
 		string var_name;
 		bool array_type;
@@ -251,6 +309,7 @@ class ASTTargetVar: public ASTMathExpr
 		ASTTargetVar(string);
 		void setOp(Operation);
 		void accept(Visitor *);
+		Value* codegen(CodeGenVisitor*);
 		int  accept_value(Visitor *);
 		void accept_value(Visitor *, int);
 };
@@ -259,6 +318,7 @@ class ASTCodeStatement: public ASTNode
 {
 	friend class ASTVisitor;
 	friend class ASTInterpreter;
+	friend class CodeGenVisitor;
 	protected:
 		string label;
 
@@ -271,6 +331,7 @@ class ASTIOBlock: public ASTCodeStatement
 {
 	friend class ASTVisitor;
 	friend class ASTInterpreter;
+	friend class CodeGenVisitor;
 	private:
 		IOInstruction iostmt;
 		string output;
@@ -282,12 +343,14 @@ class ASTIOBlock: public ASTCodeStatement
 		ASTIOBlock(IOInstruction, string);
 		ASTIOBlock(IOInstruction);
 		void accept(Visitor *);
+		Value* codegen(CodeGenVisitor*);
 };
 
 class ASTGotoBlock: public ASTCodeStatement
 {
 	friend class ASTVisitor;
 	friend class ASTInterpreter;
+	friend class CodeGenVisitor;
 	private:
 		string targetlabel;
 		ASTCondExpr *condition;
@@ -295,12 +358,14 @@ class ASTGotoBlock: public ASTCodeStatement
 		ASTGotoBlock(string, ASTCondExpr *);
 		ASTGotoBlock(string);
 		void accept(Visitor *);
+		Value* codegen(CodeGenVisitor*);
 };
 
 class ASTIfElse: public ASTCodeStatement
 {
 	friend class ASTVisitor;
 	friend class ASTInterpreter;
+	friend class CodeGenVisitor;
 	private:
 		ASTCondExpr *condition;
 		ASTCodeBlock *iftrue, *iffalse;
@@ -308,25 +373,29 @@ class ASTIfElse: public ASTCodeStatement
 		ASTIfElse(ASTCondExpr *, ASTCodeBlock *, ASTCodeBlock *);
 		ASTIfElse(ASTCondExpr *, ASTCodeBlock *);
 		void accept(Visitor *);
+		Value* codegen(CodeGenVisitor*);
 };
 
 class ASTWhileLoop: public ASTCodeStatement
 {
 	friend class ASTVisitor;
 	friend class ASTInterpreter;
+	friend class CodeGenVisitor;
 	private:
 		ASTCondExpr *condition;
 		ASTCodeBlock *statements;
 
 	public:
 		ASTWhileLoop(ASTCondExpr *, ASTCodeBlock *);
-		void accept(Visitor *);		
+		void accept(Visitor *);
+		Value* codegen(CodeGenVisitor*);		
 };
 
 class ASTForLoop: public ASTCodeStatement
 {
 	friend class ASTVisitor;
 	friend class ASTInterpreter;
+	friend class CodeGenVisitor;
 	private:
 		ASTAssignment *assignment;
 		ASTMathExpr *ulimit, *increment;
@@ -336,12 +405,14 @@ class ASTForLoop: public ASTCodeStatement
 		ASTForLoop(ASTAssignment *, ASTMathExpr *, ASTMathExpr *, ASTCodeBlock *);
 		ASTForLoop(ASTAssignment *, ASTMathExpr *, ASTCodeBlock *);
 		void accept(Visitor *);
+		Value* codegen(CodeGenVisitor*);
 };
 
 class ASTAssignment: public ASTCodeStatement
 {
 	friend class ASTVisitor;
 	friend class ASTInterpreter;
+	friend class CodeGenVisitor;
 	private:
 		ASTTargetVar *target;
 		ASTMathExpr *rexpr;
@@ -349,12 +420,14 @@ class ASTAssignment: public ASTCodeStatement
 	public:
 		ASTAssignment(ASTTargetVar *, ASTMathExpr *);
 		void accept(Visitor *);
+		Value* codegen(CodeGenVisitor*);
 };
 
 class ASTCodeBlock: public ASTNode
 {
 	friend class ASTVisitor;
 	friend class ASTInterpreter;
+	friend class CodeGenVisitor;
 	private:
 		vector<ASTCodeStatement *> statements;
 
@@ -362,12 +435,14 @@ class ASTCodeBlock: public ASTNode
 		ASTCodeBlock();
 		void addStatement(ASTCodeStatement *);
 		void accept(Visitor *);
+		Value* codegen(CodeGenVisitor*);
 };
 
 class ASTVariable: public ASTNode
 {
 	friend class ASTVisitor;
 	friend class ASTInterpreter;
+	friend class CodeGenVisitor;
 	private:
 		string var_name;
 		string data_type;
@@ -379,12 +454,14 @@ class ASTVariable: public ASTNode
 		ASTVariable(string, bool);
 		void setDataType(string);
 		void accept(Visitor *);
+		Value* codegen(CodeGenVisitor*);
 };
 
 class ASTVariableSet: public ASTNode
 {
 	friend class ASTVisitor;
 	friend class ASTInterpreter;
+	friend class CodeGenVisitor;
 	private:
 		vector<ASTVariable *> variables;
 
@@ -392,24 +469,28 @@ class ASTVariableSet: public ASTNode
 		void addVariable(ASTVariable *);
 		vector<ASTVariable *> getVariables();
 		void accept(Visitor *);
+		Value* codegen(CodeGenVisitor*);
 };
 
 class ASTDeclStatement: public ASTNode
 {
 	friend class ASTVisitor;
 	friend class ASTInterpreter;
+	friend class CodeGenVisitor;
 	private:
 		vector<ASTVariable *> variables;
 
 	public:
 		ASTDeclStatement(string, ASTVariableSet *);
 		void accept(Visitor *);
+		Value* codegen(CodeGenVisitor*);
 };
 
 class ASTDeclBlock: public ASTNode
 {
 	friend class ASTVisitor;
 	friend class ASTInterpreter;
+	friend class CodeGenVisitor;
 	private:
 		vector<ASTDeclStatement *> statements;
 
@@ -417,12 +498,14 @@ class ASTDeclBlock: public ASTNode
 		ASTDeclBlock();
 		void addStatement(ASTDeclStatement *);
 		void accept(Visitor *);
+		Value* codegen(CodeGenVisitor*);
 };
 
 class ASTProgram: public ASTNode
 {
 	friend class ASTVisitor;
 	friend class ASTInterpreter;
+	friend class CodeGenVisitor;
 	private:
 		ASTDeclBlock *decl_block;
 		ASTCodeBlock *code_block;
@@ -433,4 +516,5 @@ class ASTProgram: public ASTNode
 		ASTProgram(ASTCodeBlock *);
 		ASTProgram();
 		void accept(Visitor *);
+		Value* codegen(CodeGenVisitor*);
 };
