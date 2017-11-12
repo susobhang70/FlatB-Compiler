@@ -5,6 +5,8 @@
 #include <fstream>
 #include <exception>
 #include <algorithm>
+#include <cstdio>
+#include <fcntl.h>
 
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/STLExtras.h"
@@ -12,7 +14,6 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
-#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
@@ -22,6 +23,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Pass.h"
 #include "llvm/IR/IRPrintingPasses.h"
+#include "llvm/Bitcode/ReaderWriter.h"
 
 using namespace std;
 using namespace llvm;
@@ -31,7 +33,6 @@ using namespace llvm;
 // ASTCodeStatement *currentStatement = nullptr;
 
 static LLVMContext TheContext;
-static IRBuilder<> Builder(TheContext);
 static std::unique_ptr<Module> TheModule;
 
 Type* IntType()
@@ -41,7 +42,12 @@ Type* IntType()
 
 Value* CodeGenVisitor::checkLabel(ASTCodeStatement *statement)
 {
-	;
+	if(!statement->label.empty())
+	{
+		BasicBlock *newLabelBlock = BasicBlock::Create(TheContext, statement->label, currentBlock()->getParent());
+		labels[statement->label] = newLabelBlock;
+		pushBlock(newLabelBlock);
+	}
 }
 
 void CodeGenVisitor::generateCode(ASTProgram *program)
@@ -50,7 +56,11 @@ void CodeGenVisitor::generateCode(ASTProgram *program)
 	mainFunction = Function::Create(ftype, GlobalValue::InternalLinkage, "main", TheModule.get());
 	BasicBlock *bblock = BasicBlock::Create(TheContext, "entry", mainFunction, 0);
 
-	/* Push a new variable/block context */
+	// Print = TheModule->getFunction("printf");
+	FunctionType *ptype = FunctionType::get(IntegerType::getInt32Ty(TheContext), PointerType::get(Type::getInt8Ty(TheContext), 0), true );
+	Print = dynamic_cast<Function *>(TheModule->getOrInsertFunction("printf", ptype));
+
+	// Push a new variable/block context
 	pushBlock(bblock);
 	
 	program->codegen(this);
@@ -71,6 +81,11 @@ void CodeGenVisitor::generateCode(ASTProgram *program)
 	legacy::PassManager PM;
 	PM.add(createPrintModulePass(outs()));
 	PM.run(*TheModule);
+
+	// int fileDescriptor = open ("IRCode", O_RDWR|O_CREAT, 0777);
+	// raw_fd_ostream OS(fileDescriptor, true);
+	// WriteBitcodeToFile(TheModule.get(), OS);
+	// OS.flush();
 }
 
 CodeGenVisitor::CodeGenVisitor(map<string, SymbolTableEntry *> st)
@@ -80,19 +95,135 @@ CodeGenVisitor::CodeGenVisitor(map<string, SymbolTableEntry *> st)
 	errors = 0;
 }
 
-Value* CodeGenVisitor::visit(ASTIOBlock 		*node)
+Value* CodeGenVisitor::visit(ASTIOBlock *ioblock)
 {
+	if(ioblock->iostmt == readvar)
+	{
+		return nullptr;
+	}
+	else
+	{
+		std::vector<Value *> ArgsV;
+		ArrayType* arrayType = nullptr;
+		Value *val = nullptr;
 
+		if(ioblock->expr)
+		{
+			val = ioblock->expr->codegen(this);
+			ioblock->output += "%d";
+		}
+
+		if(ioblock->iostmt == println)
+			ioblock->output += "\n";
+
+		cout << ioblock->output << endl;
+
+		if(!ioblock->output.empty())
+		{
+			arrayType = ArrayType::get(Type::getInt8Ty(TheModule->getContext()), ioblock->output.size());
+
+			vector<Constant*> values;
+			for(int i = 0; i < ioblock->output.size(); i++)
+			{
+				int ascii = ioblock->output[i];
+				Constant* c = Constant::getIntegerValue(Type::getInt8Ty(TheModule->getContext()), APInt(8, ascii));
+				values.push_back(c);
+			}
+			Constant* init = ConstantArray::get(arrayType, values);
+
+			GlobalVariable* StringArray = new GlobalVariable(*TheModule, arrayType, false, GlobalValue::CommonLinkage, NULL, "StringArray");
+			StringArray->setInitializer(init);
+
+			// Value* stringVal = ConstantDataArray::get(TheContext, ioblock->output.c_str());
+
+			ArgsV.push_back(StringArray);
+			if(Print)
+				CallInst::Create(Print, ArgsV, "printfcall", currentBlock());
+			return nullptr;
+		}
+		return nullptr;
+	}
 }
 
-Value* CodeGenVisitor::visit(ASTGotoBlock 		*node)
+Value* CodeGenVisitor::visit(ASTGotoBlock *gotoblock)
 {
+	checkLabel(gotoblock);
+	if(gotoblock->condition)
+	{
+		Value *condition = gotoblock->condition->codegen(this);
+		ICmpInst *comparison = new ICmpInst(*currentBlock(), ICmpInst::ICMP_NE, condition, ConstantInt::get(IntType(), 0, true), "tmp");
 
+		if(symboltable.find(gotoblock->targetlabel) != symboltable.end())
+		{
+			if(labels.find(gotoblock->targetlabel) != labels.end())
+			{
+				BasicBlock *jumpBlock = labels[gotoblock->targetlabel];
+				BasicBlock *noJumpBlock = BasicBlock::Create(TheContext, "noJumpBlock", currentBlock()->getParent());
+				BranchInst::Create(jumpBlock, noJumpBlock, comparison, currentBlock());
+				popBlock();
+				pushBlock(noJumpBlock);
+			}
+		}
+	}
+	else
+	{
+		if(symboltable.find(gotoblock->targetlabel) != symboltable.end())
+		{
+			if(labels.find(gotoblock->targetlabel) != labels.end())
+			{
+				BasicBlock *jumpBlock = labels[gotoblock->targetlabel];
+				BranchInst::Create(jumpBlock);
+			}
+		}
+	}
+	return nullptr;
 }
 
 Value* CodeGenVisitor::visit(ASTIfElse *ifelse)
 {
+	checkLabel(ifelse);
+	BasicBlock *entryBlock = currentBlock();
+	Value *condition = ifelse->condition->codegen(this);
+	ICmpInst * comparison = new ICmpInst(*entryBlock, ICmpInst::ICMP_NE, condition, ConstantInt::get(IntType(), 0, true), "tmp");
+	BasicBlock *ifBlock = BasicBlock::Create(TheContext, "ifBlock", entryBlock->getParent());
+	BasicBlock *mergeBlock = BasicBlock::Create(TheContext, "mergeBlock", entryBlock->getParent());
 
+	BasicBlock * returnedBlock = nullptr;
+
+	pushBlock(ifBlock);
+	ifelse->iftrue->codegen(this);
+	returnedBlock = currentBlock();
+	popBlock();
+
+	if (!returnedBlock->getTerminator())
+	{
+		BranchInst::Create(mergeBlock, returnedBlock);
+	}
+
+	if (ifelse->iffalse)
+	{
+		BasicBlock *elseBlock = BasicBlock::Create(TheContext, "elseBlock", entryBlock->getParent());
+
+		pushBlock(elseBlock);
+		ifelse->iffalse->codegen(this);
+		returnedBlock = currentBlock();
+		popBlock();
+
+		if (!returnedBlock->getTerminator())
+		{
+			BranchInst::Create(mergeBlock, returnedBlock);
+		}
+
+		BranchInst::Create(ifBlock, elseBlock, comparison, entryBlock);
+	}
+	else
+	{
+		BranchInst::Create(ifBlock, mergeBlock, comparison, entryBlock);
+	}
+
+	popBlock();
+	pushBlock(mergeBlock);
+	return nullptr;
 }
 
 Value* CodeGenVisitor::visit(ASTCondExpr *condition)
@@ -133,7 +264,9 @@ Value* CodeGenVisitor::visit(ASTForLoop *forloop)
 	BasicBlock *afterLoopBlock = BasicBlock::Create(TheContext, "after_loop", entryBlock->getParent(), 0);
 
 	// put the increment in the body block
-	ASTAssignment* increment = new ASTAssignment(new ASTTargetVar(forloop->assignment->target->var_name), new ASTMathExpr(new ASTTargetVar(forloop->assignment->target->var_name), new ASTInteger(1), add));
+	ASTTargetVar *iterator = new ASTTargetVar(forloop->assignment->target->var_name);
+	iterator->setTarget();
+	ASTAssignment* increment = new ASTAssignment(iterator, new ASTMathExpr(new ASTTargetVar(forloop->assignment->target->var_name), new ASTInteger(1), add));
 	forloop->statements->addStatement(increment);
 
 	forloop->assignment->codegen(this);
@@ -165,6 +298,8 @@ Value* CodeGenVisitor::visit(ASTForLoop *forloop)
 
 Value* CodeGenVisitor::visit(ASTWhileLoop *whileloop)
 {
+	// TO-DO
+
 	checkLabel(whileloop);
 
 	BasicBlock *entryBlock = currentBlock();
@@ -173,7 +308,8 @@ Value* CodeGenVisitor::visit(ASTWhileLoop *whileloop)
 	BasicBlock *afterLoopBlock = BasicBlock::Create(TheContext, "after_loop", entryBlock->getParent(), 0);
 
 	pushBlock(headerBlock);
-	Value* comparison = whileloop->condition->codegen(this);
+	Value* val = whileloop->condition->codegen(this);
+	ICmpInst *comparison = new ICmpInst(*headerBlock, ICmpInst::ICMP_NE, val, ConstantInt::get(IntType(), 0, true), "tmp");
 	popBlock();
 
 	BranchInst::Create(bodyBlock, afterLoopBlock, comparison, headerBlock);
@@ -263,7 +399,10 @@ Value* CodeGenVisitor::visit(ASTTargetVar *var_location)
 
 			location = variables[var_location->var_name];
 		}
-		return location;
+		if(!var_location->isTarget)
+			return new LoadInst(location, "", false, currentBlock());
+		else
+			return location;
 	}
 	else
 	{
@@ -331,7 +470,7 @@ Value* CodeGenVisitor::visit(ASTVariable *variable)
 		ArrayType* arrayType = ArrayType::get(IntType(), variable->length);
 
 		globalVar = new GlobalVariable(*TheModule, arrayType, false, GlobalValue::CommonLinkage, NULL, variable->var_name);
-		globalVar->setInitializer(ConstantAggregateZero::get(arrayType));	 
+		globalVar->setInitializer(ConstantAggregateZero::get(arrayType));
 	}
 	else
 	{

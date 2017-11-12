@@ -5,4 +5,5 @@ declblock{
 codeblock{
 	a[0] = 5;
 	c = 5;
+	b[c] = a[0];
 }

@@ -1,8 +1,8 @@
 declblock{
-	int a, b[100];
+	int a, b;
 }
 
 codeblock{
 	a = 5;
-	b[0] = a;
+	b = a;
 }

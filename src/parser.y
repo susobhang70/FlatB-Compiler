@@ -185,6 +185,7 @@ mathexp:		mathexp '+' mathexp
 
 assignment:		identifier '=' mathexp
 				{
+					$1->setTarget();
 					$$ = new ASTAssignment($1, $3);
 				}
 				;

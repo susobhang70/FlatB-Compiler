@@ -5,8 +5,13 @@ declblock{
 codeblock{
 	a = 5;
 	c = 5;
-	while c > 6 {
-		a = 5;
+	if c > 1
+	{
+		a = 6;
+	}
+	else
+	{
+		a = 7;
 	}
 
 	a = 5;

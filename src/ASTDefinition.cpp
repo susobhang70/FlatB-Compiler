@@ -1016,12 +1016,14 @@ ASTTargetVar::ASTTargetVar(string var_name,
 {
 	this->var_name = var_name;
 	array_type = true;
+	isTarget = false;
 }
 
 ASTTargetVar::ASTTargetVar(string var_name)
 {
 	this->var_name = var_name;
 	array_type = false;
+	isTarget = false;
 	setOp(noop);
 }
 

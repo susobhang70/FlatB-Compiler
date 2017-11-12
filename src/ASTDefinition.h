@@ -145,6 +145,7 @@ class CodeGenVisitor
 		map<string, BasicBlock*> labels;
 		map<string, SymbolTableEntry *> symboltable;
 		Function *mainFunction;
+		Function *Print;
 		int errors;
 
 	public:
@@ -301,6 +302,7 @@ class ASTTargetVar: public ASTMathExpr
 	private:
 		string var_name;
 		bool array_type;
+		bool isTarget;
 
 	public:
 		ASTTargetVar(string, ASTMathExpr *);
@@ -308,6 +310,7 @@ class ASTTargetVar: public ASTMathExpr
 		ASTTargetVar(string, Operation);
 		ASTTargetVar(string);
 		void setOp(Operation);
+		void setTarget() { isTarget = true; }
 		void accept(Visitor *);
 		Value* codegen(CodeGenVisitor*);
 		int  accept_value(Visitor *);

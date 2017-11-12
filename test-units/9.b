@@ -4,10 +4,11 @@ declblock{
 
 codeblock{
 	a = 5;
-	c = 5;
-	while c > 6 {
-		a = 5;
+	p: a = 2;
+	c = 2;
+	if c < 5
+	{
+		goto p;
 	}
-
-	a = 5;
+	i = 2;
 }
