@@ -3,12 +3,14 @@ declblock{
 }
 
 codeblock{
-	a = 5;
+	c = 0;
 	p: a = 2;
-	c = 2;
+	c = c + a;
 	if c < 5
 	{
+		println c;
 		goto p;
 	}
-	i = 2;
+
+	print "Hello ", c;
 }

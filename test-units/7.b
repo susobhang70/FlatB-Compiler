@@ -3,5 +3,6 @@ declblock{
 }
 
 codeblock{
-	print "Hello";
+	a = 5;
+	print "Hello\n", a;
 }

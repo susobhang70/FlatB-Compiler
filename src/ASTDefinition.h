@@ -145,7 +145,7 @@ class CodeGenVisitor
 		map<string, BasicBlock*> labels;
 		map<string, SymbolTableEntry *> symboltable;
 		Function *mainFunction;
-		Function *Print;
+		Function *Print, *Scan;
 		int errors;
 
 	public:

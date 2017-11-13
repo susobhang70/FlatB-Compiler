@@ -4,10 +4,12 @@ declblock{
 
 codeblock{
 	a = 5;
-	c = 1;
-	if c > 2
+	if a > 2
 	{
-		a = 6;
+		print a;
 	}
-	print a;
+	else
+	{
+		print "Hello";
+	}
 }

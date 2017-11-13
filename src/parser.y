@@ -308,6 +308,7 @@ iostatement:	PRINT STRINGID ',' mathexp
 				}
 				| READ identifier
 				{
+					$2->setTarget();
 					$$ = new ASTIOBlock(readvar, $2);
 				}
 				;

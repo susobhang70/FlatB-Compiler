@@ -1,17 +1,34 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <program language='Flat-B'>
 	<declarations>
-		<variable name='a' type='int' />
-		<variable name='b' type='int' />
+		<variable name='a' size='100' type='int' />
+		<variable name='b' size='100' type='int' />
+		<variable name='c' type='int' />
 	</declarations>
 	<code>
 		<equals>
-			<var_location name='a' />
+			<var_location name='a' >
+				<index>
+					<integer value='0' />
+				</index>
+			</var_location>
 			<integer value='5' />
 		</equals>
 		<equals>
-			<var_location name='b' />
-			<var_location name='a' />
+			<var_location name='c' />
+			<integer value='5' />
+		</equals>
+		<equals>
+			<var_location name='b' >
+				<index>
+					<var_location name='c' />
+				</index>
+			</var_location>
+			<var_location name='a' >
+				<index>
+					<integer value='0' />
+				</index>
+			</var_location>
 		</equals>
 	</code>
 </program>

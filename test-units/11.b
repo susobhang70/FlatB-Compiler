@@ -3,11 +3,6 @@ declblock{
 }
 
 codeblock{
-	a = 5;
-	c = 1;
-	if c > 2
-	{
-		a = 6;
-	}
+	read a;
 	print a;
 }

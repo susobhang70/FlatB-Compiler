@@ -1764,13 +1764,14 @@ yyreduce:
   case 55:
 #line 310 "parser.y" /* yacc.c:1646  */
     {
+					(yyvsp[0].var_location)->setTarget();
 					(yyval.ioblock) = new ASTIOBlock(readvar, (yyvsp[0].var_location));
 				}
-#line 1770 "parser.tab.c" /* yacc.c:1646  */
+#line 1771 "parser.tab.c" /* yacc.c:1646  */
     break;
 
 
-#line 1774 "parser.tab.c" /* yacc.c:1646  */
+#line 1775 "parser.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -1998,7 +1999,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 316 "parser.y" /* yacc.c:1906  */
+#line 317 "parser.y" /* yacc.c:1906  */
 
 
 void yyerror (char const *s)

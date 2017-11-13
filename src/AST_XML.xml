@@ -10,24 +10,25 @@
 			<var_location name='a' />
 			<integer value='5' />
 		</equals>
-		<label name='p' />
+		<goto label='p' />
 		<equals>
-			<var_location name='a' />
-			<integer value='2' />
+			<var_location name='i' />
+			<integer value='3' />
 		</equals>
 		<equals>
 			<var_location name='c' />
 			<integer value='2' />
 		</equals>
-		<goto label='p'>
-			<condition unot='0' operation='<'>
-				<var_location name='c' />
-				<integer value='5' />
-			</condition>
-		</goto>
+		<println>
+			<var_location name='i' />
+		</println>
+		<label name='p' />
 		<equals>
 			<var_location name='i' />
-			<integer value='2' />
+			<integer value='5' />
 		</equals>
+		<print>
+			<var_location name='i' />
+		</print>
 	</code>
 </program>

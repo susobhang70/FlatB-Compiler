@@ -5,7 +5,7 @@ declblock{
 codeblock{
 	a = 5;
 	c = 5;
-	if c > 1
+	if c < 1
 	{
 		a = 6;
 	}
@@ -14,5 +14,5 @@ codeblock{
 		a = 7;
 	}
 
-	a = 5;
+	print a;
 }

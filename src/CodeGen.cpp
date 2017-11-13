@@ -1,12 +1,12 @@
 #include "ASTDefinition.h"
 #include <iostream>
-#include <stack>
-#include <map>
 #include <fstream>
 #include <exception>
 #include <algorithm>
 #include <cstdio>
 #include <fcntl.h>
+#include <stack>
+#include <map>
 
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/STLExtras.h"
@@ -28,11 +28,8 @@
 using namespace std;
 using namespace llvm;
 
-// ofstream xml("AST_XML.xml");
-// int tabs = 0;
-// ASTCodeStatement *currentStatement = nullptr;
-
 static LLVMContext TheContext;
+static IRBuilder<> Builder(TheContext);
 static std::unique_ptr<Module> TheModule;
 
 Type* IntType()
@@ -44,8 +41,19 @@ Value* CodeGenVisitor::checkLabel(ASTCodeStatement *statement)
 {
 	if(!statement->label.empty())
 	{
-		BasicBlock *newLabelBlock = BasicBlock::Create(TheContext, statement->label, currentBlock()->getParent());
-		labels[statement->label] = newLabelBlock;
+		BasicBlock *newLabelBlock;
+		if(labels.find(statement->label) == labels.end())
+		{
+			newLabelBlock = BasicBlock::Create(TheContext, statement->label, currentBlock()->getParent());
+			labels[statement->label] = newLabelBlock;
+		}
+		else
+		{
+			newLabelBlock = labels[statement->label];
+		}
+
+		BranchInst::Create(newLabelBlock, currentBlock());
+		popBlock();
 		pushBlock(newLabelBlock);
 	}
 }
@@ -56,9 +64,9 @@ void CodeGenVisitor::generateCode(ASTProgram *program)
 	mainFunction = Function::Create(ftype, GlobalValue::InternalLinkage, "main", TheModule.get());
 	BasicBlock *bblock = BasicBlock::Create(TheContext, "entry", mainFunction, 0);
 
-	// Print = TheModule->getFunction("printf");
 	FunctionType *ptype = FunctionType::get(IntegerType::getInt32Ty(TheContext), PointerType::get(Type::getInt8Ty(TheContext), 0), true );
 	Print = dynamic_cast<Function *>(TheModule->getOrInsertFunction("printf", ptype));
+	Scan = dynamic_cast<Function *>(TheModule->getOrInsertFunction("scanf", ptype));
 
 	// Push a new variable/block context
 	pushBlock(bblock);
@@ -99,6 +107,33 @@ Value* CodeGenVisitor::visit(ASTIOBlock *ioblock)
 {
 	if(ioblock->iostmt == readvar)
 	{
+		std::vector<Value *> ArgsV;
+		ArrayType* arrayType = nullptr;
+		Value *val = ioblock->expr->codegen(this);
+
+		ioblock->output += "%d";
+
+		if(!ioblock->output.empty())
+		{
+			const char *str = ioblock->output.c_str();
+
+			Constant *StrConstant = ConstantDataArray::getString(TheContext, str);
+			GlobalVariable *gv = new GlobalVariable(*TheModule, StrConstant->getType(),
+									true, GlobalValue::PrivateLinkage, StrConstant, "", nullptr,
+									GlobalVariable::NotThreadLocal, 0);
+			gv->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
+
+			Value *zero = ConstantInt::get(Type::getInt32Ty(TheContext), 0);
+			Value *Args[] = { zero, zero };
+			Value *V = Builder.CreateInBoundsGEP(gv->getValueType(), gv, Args, "");
+
+			ArgsV.push_back(V);
+			if(ioblock->expr)
+				ArgsV.push_back(val);
+
+			if(Scan)
+				CallInst::Create(Scan, ArgsV, "scanfCall", currentBlock());
+		}
 		return nullptr;
 	}
 	else
@@ -116,30 +151,26 @@ Value* CodeGenVisitor::visit(ASTIOBlock *ioblock)
 		if(ioblock->iostmt == println)
 			ioblock->output += "\n";
 
-		cout << ioblock->output << endl;
-
 		if(!ioblock->output.empty())
 		{
-			arrayType = ArrayType::get(Type::getInt8Ty(TheModule->getContext()), ioblock->output.size());
+			const char *str = ioblock->output.c_str();
 
-			vector<Constant*> values;
-			for(int i = 0; i < ioblock->output.size(); i++)
-			{
-				int ascii = ioblock->output[i];
-				Constant* c = Constant::getIntegerValue(Type::getInt8Ty(TheModule->getContext()), APInt(8, ascii));
-				values.push_back(c);
-			}
-			Constant* init = ConstantArray::get(arrayType, values);
+			Constant *StrConstant = ConstantDataArray::getString(TheContext, str);
+			GlobalVariable *gv = new GlobalVariable(*TheModule, StrConstant->getType(),
+									true, GlobalValue::PrivateLinkage, StrConstant, "", nullptr,
+									GlobalVariable::NotThreadLocal, 0);
+			gv->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
 
-			GlobalVariable* StringArray = new GlobalVariable(*TheModule, arrayType, false, GlobalValue::CommonLinkage, NULL, "StringArray");
-			StringArray->setInitializer(init);
+			Value *zero = ConstantInt::get(Type::getInt32Ty(TheContext), 0);
+			Value *Args[] = { zero, zero };
+			Value *V = Builder.CreateInBoundsGEP(gv->getValueType(), gv, Args, "");
 
-			// Value* stringVal = ConstantDataArray::get(TheContext, ioblock->output.c_str());
+			ArgsV.push_back(V);
+			if(ioblock->expr)
+				ArgsV.push_back(val);
 
-			ArgsV.push_back(StringArray);
 			if(Print)
 				CallInst::Create(Print, ArgsV, "printfcall", currentBlock());
-			return nullptr;
 		}
 		return nullptr;
 	}
@@ -155,25 +186,45 @@ Value* CodeGenVisitor::visit(ASTGotoBlock *gotoblock)
 
 		if(symboltable.find(gotoblock->targetlabel) != symboltable.end())
 		{
+			BasicBlock *jumpBlock;
 			if(labels.find(gotoblock->targetlabel) != labels.end())
 			{
-				BasicBlock *jumpBlock = labels[gotoblock->targetlabel];
-				BasicBlock *noJumpBlock = BasicBlock::Create(TheContext, "noJumpBlock", currentBlock()->getParent());
-				BranchInst::Create(jumpBlock, noJumpBlock, comparison, currentBlock());
-				popBlock();
-				pushBlock(noJumpBlock);
+				jumpBlock = labels[gotoblock->targetlabel];
 			}
+			else
+			{
+				jumpBlock = BasicBlock::Create(TheContext, gotoblock->targetlabel, currentBlock()->getParent());
+				labels[gotoblock->targetlabel] = jumpBlock;
+			}
+
+			BasicBlock *noJumpBlock = BasicBlock::Create(TheContext, "noJumpBlock", currentBlock()->getParent());
+			BranchInst::Create(jumpBlock, noJumpBlock, comparison, currentBlock());
+			popBlock();
+			pushBlock(noJumpBlock);
 		}
 	}
 	else
 	{
 		if(symboltable.find(gotoblock->targetlabel) != symboltable.end())
 		{
+			BasicBlock *jumpBlock;
 			if(labels.find(gotoblock->targetlabel) != labels.end())
 			{
-				BasicBlock *jumpBlock = labels[gotoblock->targetlabel];
-				BranchInst::Create(jumpBlock);
+				jumpBlock = labels[gotoblock->targetlabel];
+				BranchInst::Create(jumpBlock, currentBlock());
 			}
+			else
+			{
+				jumpBlock = BasicBlock::Create(TheContext, gotoblock->targetlabel, currentBlock()->getParent());
+				labels[gotoblock->targetlabel] = jumpBlock;
+
+				BasicBlock *noJumpBlock = BasicBlock::Create(TheContext, "noJumpBlock", currentBlock()->getParent());
+				BranchInst::Create(jumpBlock, currentBlock());
+				// BranchInst::Create(noJumpBlock, currentBlock());
+				popBlock();
+				pushBlock(noJumpBlock);
+			}
+			// BranchInst::Create(jumpBlock, currentBlock());
 		}
 	}
 	return nullptr;
@@ -228,28 +279,34 @@ Value* CodeGenVisitor::visit(ASTIfElse *ifelse)
 
 Value* CodeGenVisitor::visit(ASTCondExpr *condition)
 {
-	Value *lval = condition->ltree->codegen(this);
-	Value *rval = condition->rtree->codegen(this);
+	Value *lval = static_cast<Value*>(condition->ltree->codegen(this));
+	Value *rval = static_cast<Value*>(condition->rtree->codegen(this));
 
 	Value *outcome = nullptr;
 	switch(condition->condition)
 	{
 		case les: 
-			outcome = new ZExtInst(CmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_SLT, lval, rval,"tmp", currentBlock()), IntType(), "zext", currentBlock());
+			outcome = new ZExtInst(ICmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_SLT, lval, rval,"tmp", currentBlock()), IntType(), "zext", currentBlock());
+			break;
 		case grt: 
-			outcome = new ZExtInst(CmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_SGT, lval, rval, "tmp", currentBlock()), IntType(), "zext", currentBlock());
+			outcome = new ZExtInst(ICmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_SGT, lval, rval, "tmp", currentBlock()), IntType(), "zext", currentBlock());
+			break;
 		case leq: 
-			outcome = new ZExtInst(CmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_SLE, lval, rval, "tmp", currentBlock()), IntType(), "zext", currentBlock());
+			outcome = new ZExtInst(ICmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_SLE, lval, rval, "tmp", currentBlock()), IntType(), "zext", currentBlock());
+			break;
 		case geq: 
-			outcome = new ZExtInst(CmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_SGE, lval, rval, "tmp", currentBlock()), IntType(), "zext", currentBlock());
+			outcome = new ZExtInst(ICmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_SGE, lval, rval, "tmp", currentBlock()), IntType(), "zext", currentBlock());
+			break;
 		case neq: 
-			outcome = new ZExtInst(CmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_NE, lval, rval, "tmp", currentBlock()), IntType(), "zext", currentBlock());
+			outcome = new ZExtInst(ICmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_NE, lval, rval, "tmp", currentBlock()), IntType(), "zext", currentBlock());
+			break;
 		case eqto: 
-			outcome = new ZExtInst(CmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_EQ, lval, rval, "tmp", currentBlock()), IntType(), "zext", currentBlock());
+			outcome = new ZExtInst(ICmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_EQ, lval, rval, "tmp", currentBlock()), IntType(), "zext", currentBlock());
+			break;
 	}
 
-	if(condition->unot)
-		return new ZExtInst(CmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_EQ, ConstantInt::get(IntType(), 0, true), outcome,"tmp", currentBlock()), IntType(), "zext", currentBlock());
+	// if(condition->unot)
+	// 	return new ZExtInst(CmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_EQ, ConstantInt::get(IntType(), 0, true), outcome,"tmp", currentBlock()), IntType(), "zext", currentBlock());
 
 	return outcome;
 }
