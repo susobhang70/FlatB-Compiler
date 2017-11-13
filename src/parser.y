@@ -341,8 +341,8 @@ int main(int argc, char *argv[])
 	{
 		ASTVisitor v;
 		v.visit(start);
-		// ASTInterpreter itpr(v.getSymbolTable());
-		// itpr.visit(start);
+		//ASTInterpreter itpr(v.getSymbolTable());
+		//itpr.visit(start);
 		CodeGenVisitor cgv(v.getSymbolTable());
 		cgv.generateCode(start, argv[1]);
 	}

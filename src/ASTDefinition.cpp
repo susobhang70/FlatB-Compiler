@@ -671,7 +671,7 @@ void ASTInterpreter::visit(ASTForLoop *forloop)
 	int i = forloop->assignment->target->accept_value(this);
 	int ulimit = forloop->ulimit->accept_value(this);
 
-	while(i < ulimit)
+	while(i <= ulimit)
 	{
 		forloop->statements->accept(this);
 		ulimit = forloop->ulimit->accept_value(this);
