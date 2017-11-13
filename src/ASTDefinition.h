@@ -150,7 +150,7 @@ class CodeGenVisitor
 
 	public:
 		CodeGenVisitor(map<string, SymbolTableEntry *> st);
-		void generateCode(ASTProgram*);
+		void generateCode(ASTProgram*, string);
 		BasicBlock *currentBlock() { return blocks.top(); }
 		void pushBlock(BasicBlock *block) {blocks.push(block); }
 		void popBlock() { blocks.pop(); }

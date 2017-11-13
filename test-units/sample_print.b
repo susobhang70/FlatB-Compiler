@@ -4,5 +4,5 @@ declblock{
 
 codeblock{
 	a = 5;
-	print "Hello\n", a;
+	print "Hello", a;
 }

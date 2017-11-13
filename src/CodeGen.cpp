@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <fcntl.h>
+#include <unistd.h>
 #include <stack>
 #include <map>
 
@@ -30,7 +31,7 @@ using namespace llvm;
 
 static LLVMContext TheContext;
 static IRBuilder<> Builder(TheContext);
-static std::unique_ptr<Module> TheModule;
+static unique_ptr<Module> TheModule;
 
 Type* IntType()
 {
@@ -58,7 +59,7 @@ Value* CodeGenVisitor::checkLabel(ASTCodeStatement *statement)
 	}
 }
 
-void CodeGenVisitor::generateCode(ASTProgram *program)
+void CodeGenVisitor::generateCode(ASTProgram *program, string filename)
 {
 	FunctionType *ftype = FunctionType::get(Type::getVoidTy(TheContext), false);
 	mainFunction = Function::Create(ftype, GlobalValue::InternalLinkage, "main", TheModule.get());
@@ -90,10 +91,15 @@ void CodeGenVisitor::generateCode(ASTProgram *program)
 	PM.add(createPrintModulePass(outs()));
 	PM.run(*TheModule);
 
-	// int fileDescriptor = open ("IRCode", O_RDWR|O_CREAT, 0777);
-	// raw_fd_ostream OS(fileDescriptor, true);
+	filename = filename + ".ll";
+
+	int fileDescriptor = open (filename.c_str(), O_RDWR|O_CREAT, 0777);
+	raw_fd_ostream OS(fileDescriptor, true);
 	// WriteBitcodeToFile(TheModule.get(), OS);
-	// OS.flush();
+	TheModule->print(OS, NULL);
+	OS.flush();
+	OS.close();
+	close(fileDescriptor);
 }
 
 CodeGenVisitor::CodeGenVisitor(map<string, SymbolTableEntry *> st)
@@ -107,7 +113,7 @@ Value* CodeGenVisitor::visit(ASTIOBlock *ioblock)
 {
 	if(ioblock->iostmt == readvar)
 	{
-		std::vector<Value *> ArgsV;
+		vector<Value *> ArgsV;
 		ArrayType* arrayType = nullptr;
 		Value *val = ioblock->expr->codegen(this);
 
@@ -138,7 +144,7 @@ Value* CodeGenVisitor::visit(ASTIOBlock *ioblock)
 	}
 	else
 	{
-		std::vector<Value *> ArgsV;
+		vector<Value *> ArgsV;
 		ArrayType* arrayType = nullptr;
 		Value *val = nullptr;
 
@@ -220,11 +226,9 @@ Value* CodeGenVisitor::visit(ASTGotoBlock *gotoblock)
 
 				BasicBlock *noJumpBlock = BasicBlock::Create(TheContext, "noJumpBlock", currentBlock()->getParent());
 				BranchInst::Create(jumpBlock, currentBlock());
-				// BranchInst::Create(noJumpBlock, currentBlock());
 				popBlock();
 				pushBlock(noJumpBlock);
 			}
-			// BranchInst::Create(jumpBlock, currentBlock());
 		}
 	}
 	return nullptr;
@@ -305,8 +309,8 @@ Value* CodeGenVisitor::visit(ASTCondExpr *condition)
 			break;
 	}
 
-	// if(condition->unot)
-	// 	return new ZExtInst(CmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_EQ, ConstantInt::get(IntType(), 0, true), outcome,"tmp", currentBlock()), IntType(), "zext", currentBlock());
+	if(condition->unot)
+		return new ZExtInst(CmpInst::Create(Instruction::ICmp, ICmpInst::ICMP_EQ, ConstantInt::get(IntType(), 0, true), outcome,"tmp", currentBlock()), IntType(), "zext", currentBlock());
 
 	return outcome;
 }
@@ -323,7 +327,12 @@ Value* CodeGenVisitor::visit(ASTForLoop *forloop)
 	// put the increment in the body block
 	ASTTargetVar *iterator = new ASTTargetVar(forloop->assignment->target->var_name);
 	iterator->setTarget();
-	ASTAssignment* increment = new ASTAssignment(iterator, new ASTMathExpr(new ASTTargetVar(forloop->assignment->target->var_name), new ASTInteger(1), add));
+	ASTAssignment* increment;
+
+	if(forloop->increment)
+		increment = new ASTAssignment(iterator, new ASTMathExpr(new ASTTargetVar(forloop->assignment->target->var_name), forloop->increment, add));
+	else
+		increment = new ASTAssignment(iterator, new ASTMathExpr(new ASTTargetVar(forloop->assignment->target->var_name), new ASTInteger(1), add));
 	forloop->statements->addStatement(increment);
 
 	forloop->assignment->codegen(this);
@@ -331,7 +340,7 @@ Value* CodeGenVisitor::visit(ASTForLoop *forloop)
 	Value *endVal = forloop->ulimit->codegen(this);
 
 	Value *val = new LoadInst(variables[forloop->assignment->target->var_name], "load", headerBlock);
-	ICmpInst *comparison = new ICmpInst(*headerBlock, ICmpInst::ICMP_SLT, val, endVal, "tmp");
+	ICmpInst *comparison = new ICmpInst(*headerBlock, ICmpInst::ICMP_SLE, val, endVal, "tmp");
 
 	BranchInst::Create(bodyBlock, afterLoopBlock, comparison, headerBlock);
 	BranchInst::Create(headerBlock, entryBlock);

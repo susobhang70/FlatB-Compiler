@@ -3,9 +3,9 @@ declblock{
 }
 
 codeblock{
-	a = 5;
+	c = 0;
 	p: a = 2;
-	c = 2 + a;
+	c = c + a;
 	println c;
 	goto p if c < 5;
 	i = 2;

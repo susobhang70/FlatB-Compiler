@@ -6,10 +6,10 @@ codeblock{
 	a = 5;
 	if a > 2
 	{
-		print a;
+		println a;
 	}
 	else
 	{
-		print "Hello";
+		println "Hello";
 	}
 }

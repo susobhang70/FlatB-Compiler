@@ -344,6 +344,6 @@ int main(int argc, char *argv[])
 		// ASTInterpreter itpr(v.getSymbolTable());
 		// itpr.visit(start);
 		CodeGenVisitor cgv(v.getSymbolTable());
-		cgv.generateCode(start);
+		cgv.generateCode(start, argv[1]);
 	}
 }

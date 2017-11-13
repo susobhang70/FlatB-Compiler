@@ -19,6 +19,6 @@ codeblock
 		k = 200;
 	}
 
-	goto L1 if k < 100;
+	goto L1 if k <= 100;
 	println k;
 }
